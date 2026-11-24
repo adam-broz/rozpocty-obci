@@ -1,0 +1,83 @@
+# Jednou měsíčně stáhne nová data, přegeneruje JSON, obrázky a web a nasadí
+# ho na GitHub Pages. Spustit jde i ručně (Actions → Aktualizace dat a webu).
+name: Aktualizace dat a webu
+
+on:
+  schedule:
+    - cron: "17 5 3 * *" # 3. den v měsíci v 5:17 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # Stažená data se drží v cache mezi běhy, ať se nic nestahuje zbytečně.
+      # download.py sám obnoví jen to, co je starší než ~25 dní (číselníky,
+      # poslední rok) nebo co chybí (nový rok).
+      - name: Cache stažených dat
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: raw-${{ github.run_id }}
+          restore-keys: raw-
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Pipeline (stažení → agregace → JSON)
+        run: uv run python -m pipeline
+
+      - name: Testy
+        run: uv run pytest -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Cache obrázků ke sdílení
+        uses: actions/cache@v4
+        with:
+          path: web/public/og
+          key: og-${{ github.run_id }}
+          restore-keys: og-
+
+      - name: Sestavení webu
+        working-directory: web
+        env:
+          SITE_URL: https://${{ github.repository_owner }}.github.io
+          BASE_PATH: /${{ github.event.repository.name }}
+          PUBLIC_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
