@@ -18,6 +18,7 @@ class Category:
     id: str
     name: str
     description: str
+    phrase: str
     prefixes: tuple[str, ...]
 
 
@@ -26,7 +27,7 @@ def load(path: Path = C.CATEGORIES_FILE) -> tuple[Category, ...]:
     with open(path, encoding="utf-8") as f:
         raw = yaml.safe_load(f)
     cats = tuple(
-        Category(c["id"], c["name"], c.get("description", ""), tuple(str(p) for p in c.get("prefixes", [])))
+        Category(c["id"], c["name"], c.get("description", ""), c.get("phrase", ""), tuple(str(p) for p in c.get("prefixes", [])))
         for c in raw["categories"]
     )
     ids = [c.id for c in cats]

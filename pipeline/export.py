@@ -71,9 +71,11 @@ def _highlight(year: dict) -> dict | None:
 
 
 def export(con: duckdb.DuckDBPyConnection, years: list[int]) -> None:
-    out = C.OUTPUT
-    if out.exists():
-        shutil.rmtree(out)
+    # Zapisujeme do dočasné složky a až nakonec ji prohodíme s tou ostrou,
+    # aby web (nebo generátor obrázků) nikdy neviděl rozepsaná data.
+    final = C.OUTPUT
+    out = final.with_name(final.name + ".tmp")
+    shutil.rmtree(out, ignore_errors=True)
     (out / "obce").mkdir(parents=True)
 
     cats = categories.load()
@@ -158,7 +160,7 @@ def export(con: duckdb.DuckDBPyConnection, years: list[int]) -> None:
         "generated": dt.date.today().isoformat(),
         "years": years,
         "latestYear": max(years),
-        "categories": [{"id": c.id, "name": c.name, "description": c.description} for c in cats],
+        "categories": [{"id": c.id, "name": c.name, "description": c.description, "phrase": c.phrase} for c in cats],
         "sizeBands": [label for _, label in C.SIZE_BANDS],
         "kraje": C.KRAJE,
         "minGroupSize": C.MIN_GROUP_SIZE,
@@ -170,4 +172,10 @@ def export(con: duckdb.DuckDBPyConnection, years: list[int]) -> None:
     }
     with open(out / "meta.json", "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)
-    log.info("zapsáno %d obcí do %s", n_written, out.relative_to(C.ROOT))
+    old = final.with_name(final.name + ".old")
+    shutil.rmtree(old, ignore_errors=True)
+    if final.exists():
+        final.rename(old)
+    out.rename(final)
+    shutil.rmtree(old, ignore_errors=True)
+    log.info("zapsáno %d obcí do %s", n_written, final.relative_to(C.ROOT))

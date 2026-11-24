@@ -13,6 +13,8 @@ Klíčová pravidla (podrobně v DECISIONS.md):
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import duckdb
 
 from . import categories
@@ -153,29 +155,68 @@ def build(con: duckdb.DuckDBPyConnection, years: list[int]) -> None:
         """,
         [[c.id for c in categories.load()]],
     )
+    _group_medians(con)
+
+
+def median_without(values: list[float], k: int) -> float:
+    """Medián seřazeného seznamu `values` bez prvku na pozici `k`."""
+    m = len(values) - 1
+    get = lambda j: values[j] if j < k else values[j + 1]  # noqa: E731
+    if m % 2:
+        return get(m // 2)
+    return (get(m // 2 - 1) + get(m // 2)) / 2
+
+
+def _group_medians(con: duckdb.DuckDBPyConnection) -> None:
+    """Medián podobných obcí – BEZ obce samotné (srovnáváme s ostatními).
+
+    Skupina = stejný rok, velikostní kategorie a kraj. Má-li skupina v kraji
+    méně než MIN_GROUP_SIZE dalších obcí, použije se stejná kategorie v celé ČR.
+    """
+    from collections import defaultdict
+
+    rows = con.execute("SELECT zuj, rok, kraj, band, metric, pc FROM pc_long").fetchall()
+    kraj_g: dict[tuple, list] = defaultdict(list)
+    cr_g: dict[tuple, list] = defaultdict(list)
+    for zuj, rok, kraj, band, metric, pc in rows:
+        kraj_g[(rok, kraj, band, metric)].append((pc, zuj))
+        cr_g[(rok, band, metric)].append((pc, zuj))
+    pos: dict[tuple, tuple[list[float], dict[str, int]]] = {}
+
+    def lookup(key, groups):
+        if key not in pos:
+            items = sorted(groups[key])
+            pos[key] = ([v for v, _ in items], {z: i for i, (_, z) in enumerate(items)})
+        return pos[key]
+
+    out: dict[tuple, dict] = {}
+    for zuj, rok, kraj, band, metric, _ in rows:
+        vals, idx = lookup((rok, kraj, band, metric), kraj_g)
+        scope = "kraj"
+        if len(vals) - 1 < C.MIN_GROUP_SIZE:
+            vals, idx = lookup((rok, band, metric), cr_g)
+            scope = "cr"
+        if len(vals) < 2:
+            continue
+        rec = out.setdefault((zuj, rok), {"band": band, "scope": scope, "n": len(vals) - 1, "med": {}})
+        rec["med"][metric] = median_without(vals, idx[zuj])
+
+    import csv
+    import tempfile
+
+    with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["zuj", "rok", "band", "scope", "n", "metric", "med"])
+        for (z, r), g in out.items():
+            for metric, med in g["med"].items():
+                w.writerow([z, r, g["band"], g["scope"], g["n"], metric, med])
+        tmp = f.name
     con.execute(
         f"""
         CREATE OR REPLACE TABLE skupiny AS
-        WITH kraj_g AS (
-          SELECT rok, kraj, band, metric, median(pc) AS med, count(*) AS n
-          FROM pc_long GROUP BY ALL
-        ), cr_g AS (
-          SELECT rok, band, metric, median(pc) AS med, count(*) AS n
-          FROM pc_long GROUP BY ALL
-        )
-        , picked AS (
-          SELECT o.zuj, o.rok, o.band, k.metric,
-                 k.n >= {C.MIN_GROUP_SIZE} AS in_kraj,
-                 CASE WHEN k.n >= {C.MIN_GROUP_SIZE} THEN k.n ELSE c.n END AS group_n,
-                 CASE WHEN k.n >= {C.MIN_GROUP_SIZE} THEN k.med ELSE c.med END AS med
-          FROM (SELECT DISTINCT zuj, rok, kraj, band FROM pc_long) o
-          JOIN kraj_g k ON k.rok = o.rok AND k.kraj = o.kraj AND k.band = o.band
-          JOIN cr_g c ON c.rok = o.rok AND c.band = o.band AND c.metric = k.metric
-        )
-        SELECT zuj, rok, band,
-               CASE WHEN bool_and(in_kraj) THEN 'kraj' ELSE 'cr' END AS scope,
-               max(group_n) AS n,
-               map_from_entries(list(struct_pack(k := metric, v := med))) AS med
-        FROM picked GROUP BY zuj, rok, band
+        SELECT zuj, rok, band, scope, n, map(list(metric), list(med)) AS med
+        FROM read_csv('{tmp}', header=true, types={{'zuj': 'VARCHAR', 'med': 'DOUBLE'}})
+        GROUP BY zuj, rok, band, scope, n
         """
     )
+    Path(tmp).unlink()

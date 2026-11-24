@@ -17,3 +17,5 @@ web/.astro/
 
 # OS
 .DS_Store
+web/public/data.tmp/
+web/public/data.old/

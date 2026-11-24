@@ -3,6 +3,8 @@
 #
 # Jak to funguje
 # --------------
+# Pole `phrase` se používá ve větách na webu („Obec dává na kulturu …“).
+#
 # Paragraf je čtyřmístný kód (např. 3113 = Základní školy). Jeho první číslice
 # je skupina, první dvě oddíl, první tři pododdíl. Každá kategorie má seznam
 # prefixů; paragraf patří do kategorie, jejíž prefix je NEJDELŠÍ shodný.
@@ -19,12 +21,14 @@
 
 categories:
   - id: doprava
+    phrase: na dopravu
     name: Doprava
     description: Silnice a chodníky, parkoviště, veřejná doprava a dopravní obslužnost.
     prefixes:
       - "22"    # oddíl 22 Doprava (2212 Silnice, 2219 Ostatní záležitosti pozemních komunikací – chodníky, 2221 Provoz veřejné silniční dopravy, 2292 Dopravní obslužnost…)
 
   - id: skolstvi
+    phrase: na školství
     name: Školství
     description: Mateřské a základní školy, školní jídelny, zájmové vzdělávání.
     prefixes:
@@ -32,18 +36,21 @@ categories:
       - "32"    # oddíl 32 Vzdělávání a školské služby (vyšší stupně, pokud je obec financuje)
 
   - id: kultura
+    phrase: na kulturu
     name: Kultura
     description: Knihovny, muzea, kulturní domy, památky, slavnosti, místní zpravodaj.
     prefixes:
       - "33"    # oddíl 33 Kultura, církve a sdělovací prostředky (3314 Knihovny, 3319 Ostatní záležitosti kultury, 3322 Památky, 3349 Zpravodaj, 3399 SPOZ…)
 
   - id: sport
+    phrase: na sport a volný čas
     name: Sport a volný čas
     description: Sportoviště, dětská hřiště, příspěvky sportovním klubům a zájmové činnosti.
     prefixes:
       - "34"    # oddíl 34 Sport a zájmová činnost (3412 Sportovní zařízení, 3419 Ostatní sportovní činnost, 3421 Využití volného času dětí a mládeže…)
 
   - id: bydleni
+    phrase: na bydlení a komunální služby
     name: Bydlení a komunální služby
     description: Obecní byty, veřejné osvětlení, hřbitovy, pitná voda, územní plánování, technické služby.
     prefixes:
@@ -51,6 +58,7 @@ categories:
       - "231"   # pododdíl 231 Pitná voda – zásobování vodou je komunální služba (COFOG 06.3)
 
   - id: zivotni_prostredi
+    phrase: na životní prostředí
     name: Životní prostředí
     description: Odpady, veřejná zeleň, čistota obce, kanalizace a čistírny, vodní toky, lesy.
     prefixes:
@@ -64,30 +72,35 @@ categories:
       - "103"   # pododdíl 103 Lesní hospodářství (obecní lesy)
 
   - id: socialni
+    phrase: na sociální služby
     name: Sociální služby
     description: Pečovatelská služba, domovy pro seniory, sociální poradenství, podpora zaměstnanosti.
     prefixes:
       - "4"     # skupina 4 Sociální věci a politika zaměstnanosti
 
   - id: zdravotnictvi
+    phrase: na zdravotnictví
     name: Zdravotnictví
     description: Nemocnice a ambulance zřizované obcí, záchranná služba, protidrogová prevence.
     prefixes:
       - "35"    # oddíl 35 Zdravotnictví
 
   - id: bezpecnost
+    phrase: na bezpečnost
     name: Bezpečnost
     description: Hasiči (SDH), obecní a městská policie, krizové řízení.
     prefixes:
       - "5"     # skupina 5 Bezpečnost státu a právní ochrana (5311 Bezpečnost a veřejný pořádek – obecní policie, 5512 Požární ochrana – dobrovolná část, 52xx Civilní připravenost…)
 
   - id: sprava
+    phrase: na chod úřadu a zastupitelstva
     name: Správa obce
     description: Obecní úřad, zastupitelstvo, volby.
     prefixes:
       - "61"    # oddíl 61 Státní moc, státní správa, územní samospráva a politické strany (6112 Zastupitelstva obcí, 6171 Činnost místní správy, 611x Volby)
 
   - id: ostatni
+    phrase: na ostatní účely
     name: Ostatní
     description: Finanční operace (bankovní poplatky, pojištění, daně placené obcí), zemědělství, cestovní ruch, podpora podnikání a další.
     prefixes:

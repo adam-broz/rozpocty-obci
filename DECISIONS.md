@@ -80,7 +80,10 @@ Mapování je v `pipeline/categories.yaml` s komentáři. Sporné případy:
 medián.** Velikostní kategorie odpovídají číselníku KATOBYV (0–100, 101–200, …),
 jen dvě největší jsou sloučené do „nad 100 000“. Pokud má skupina v kraji
 méně než 5 obcí (velká města), srovnává se se stejnou kategorií v celé ČR.
-Medián se počítá z hodnot na obyvatele a obec sama je v něm zahrnutá.
+Medián se počítá z hodnot na obyvatele **ostatních** obcí skupiny – obec sama
+v něm není (jinak by u malých skupin vycházela „stejně“ sama se sebou; viděli
+jsme to u Kutné Hory ve skupině 7 měst). Hranice „aspoň 5 obcí“ se tedy týká
+ostatních obcí.
 Skupina se počítá pro každý rok zvlášť (obec může mezi kategoriemi přecházet).
 
 **D14. Praha je obec i kraj.** Hradí např. střední školy, takže srovnání
