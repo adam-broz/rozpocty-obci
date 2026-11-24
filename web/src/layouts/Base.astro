@@ -46,27 +46,34 @@ const meta = getMeta();
     <header class="site-header">
       <div class="wrap header-inner">
         <a class="brand" href={base}>
-          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="9" rx="1" /><rect x="10" y="7" width="4" height="14" rx="1" /><rect x="17" y="3" width="4" height="18" rx="1" /></svg>
+          <span class="brand-mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="9" rx="1" /><rect x="10" y="7" width="4" height="14" rx="1" /><rect x="17" y="3" width="4" height="18" rx="1" /></svg></span>
           Rozpočty obcí
         </a>
         <nav aria-label="Hlavní">
+          <a href={`${base}#kraje`}>Kraje</a>
           <a href={`${base}o-projektu/`}>Jak to počítáme</a>
         </nav>
       </div>
     </header>
+    <slot name="hero" />
     <main id="obsah" class="wrap">
       <slot />
     </main>
     <footer class="site-footer">
-      <div class="wrap">
-        <p>
-          <strong>Zdroj dat: Ministerstvo financí ČR, Monitor státní pokladny; Český statistický úřad.</strong>
-          Data jsou upravená: agregovaná do kategorií a přepočtená na obyvatele. Nezávislý
-          open-source projekt, nijak nesouvisí s uvedenými úřady.
-          <a href={meta.sources.monitorLicense}>Podmínky užití dat Monitoru</a> ·
-          <a href={`${base}o-projektu/`}>Metodika a licence</a>
-        </p>
-        <p class="muted">Data aktualizována {new Date(meta.generated).toLocaleDateString('cs-CZ')} · roky {meta.years[0]}–{meta.latestYear}</p>
+      <div class="wrap footer-grid">
+        <div>
+          <p class="footer-brand">Rozpočty obcí</p>
+          <p>Nezávislý open-source projekt. Nijak nesouvisí s Ministerstvem financí ani s Českým statistickým úřadem.</p>
+        </div>
+        <div>
+          <p><strong>Zdroj dat: Ministerstvo financí ČR, Monitor státní pokladny; Český statistický úřad.</strong></p>
+          <p>
+            Data jsou upravená: sečtená do kategorií, bez převodů mezi vlastními účty obce a přepočtená na obyvatele.
+            <a href={meta.sources.monitorLicense}>Podmínky užití dat Monitoru</a> ·
+            <a href={`${base}o-projektu/`}>Metodika a licence</a>
+          </p>
+          <p class="muted">Aktualizováno {new Date(meta.generated).toLocaleDateString('cs-CZ')} · roky {meta.years[0]}–{meta.latestYear}</p>
+        </div>
       </div>
     </footer>
   </body>
@@ -74,44 +81,55 @@ const meta = getMeta();
 
 <style is:global>
   :root {
-    --bg: #f7f6f2;
+    --bg: #f6f5f1;
+    --bg-soft: #eeede7;
     --surface: #ffffff;
-    --ink: #1c1d1f;
-    --muted: #5a5f66;
-    --line: #dcdad3;
+    --ink: #1b1c1e;
+    --muted: #575c63;
+    --line: #dddbd3;
     --accent: #0f5c8c;
-    --accent-soft: #d6e6f1;
+    --accent-soft: #e1edf5;
     --accent-ink: #0b4a72;
-    --median: #1c1d1f;
-    --pos: #8a4b00;
-    --neg: #2f6b2f;
+    --hero: #0f3b57;
+    --hero-ink: #ffffff;
+    --hero-muted: #c4d7e4;
+    --median: #1b1c1e;
+    --more: #9a4a0b;
+    --less: #1f6a8f;
     --income: #0f5c8c;
     --expense: #d9895f;
     --capital: #8f3a12;
     --focus: #e0a100;
-    --radius: 10px;
+    --shadow: 0 1px 2px rgb(20 20 20 / .05), 0 4px 16px rgb(20 20 20 / .05);
+    --radius: 12px;
     --font: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #141517;
-      --surface: #1d1f22;
+      --bg: #131416;
+      --bg-soft: #1f2124;
+      --surface: #1b1d20;
       --ink: #ecebe7;
-      --muted: #a8adb4;
-      --line: #34373c;
+      --muted: #a9aeb5;
+      --line: #33363b;
       --accent: #6fb3e0;
-      --accent-soft: #23384a;
+      --accent-soft: #1f3445;
       --accent-ink: #9fd0f2;
+      --hero: #0d2a3d;
+      --hero-ink: #ffffff;
+      --hero-muted: #a9c3d6;
       --median: #ecebe7;
-      --pos: #f0b46b;
-      --neg: #8fcf8f;
+      --more: #f0b46b;
+      --less: #8cc8ec;
       --income: #6fb3e0;
       --expense: #9a5a3c;
       --capital: #f2b38f;
+      --shadow: none;
     }
   }
   *, *::before, *::after { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; scroll-padding-top: 72px; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
   body {
     margin: 0;
     background: var(--bg);
@@ -123,30 +141,41 @@ const meta = getMeta();
   a:hover { text-decoration-thickness: 2px; }
   :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
   h1, h2, h3 { line-height: 1.2; text-wrap: balance; }
-  h1 { font-size: clamp(1.9rem, 5vw, 2.6rem); font-weight: 700; margin: 0 0 .25rem; letter-spacing: -0.01em; }
-  h2 { font-size: 1.35rem; font-weight: 700; margin: 0 0 .75rem; }
+  h1 { font-size: clamp(2rem, 6vw, 2.9rem); font-weight: 700; margin: 0 0 .25rem; letter-spacing: -0.015em; }
+  h2 { font-size: 1.45rem; font-weight: 700; margin: 0 0 .35rem; letter-spacing: -0.005em; }
   h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 .5rem; }
   p { margin: 0 0 1rem; }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
   .muted { color: var(--muted); }
-  .small { font-size: .9rem; }
-  .skip { position: absolute; left: -999px; top: 0; background: var(--surface); padding: .5rem 1rem; z-index: 10; }
+  .small { font-size: .92rem; }
+  .skip { position: absolute; left: -999px; top: 0; background: var(--surface); padding: .5rem 1rem; z-index: 50; }
   .skip:focus { left: 8px; top: 8px; }
   .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-  .site-header { border-bottom: 1px solid var(--line); background: var(--surface); }
-  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 56px; }
-  .brand { display: inline-flex; gap: .5rem; align-items: center; font-weight: 700; color: var(--ink); text-decoration: none; font-size: 1.1rem; }
-  .brand svg { fill: var(--accent); }
-  .site-header nav a { color: var(--muted); font-size: .95rem; }
-  main { padding-top: 1.75rem; padding-bottom: 3rem; }
-  .site-footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2.5rem; font-size: .9rem; color: var(--muted); }
-  .site-footer strong { color: var(--ink); font-weight: 600; }
+  .site-header { background: var(--surface); border-bottom: 1px solid var(--line); }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 58px; }
+  .brand { display: inline-flex; gap: .55rem; align-items: center; font-weight: 700; color: var(--ink); text-decoration: none; font-size: 1.12rem; }
+  .brand-mark { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--accent); }
+  .brand-mark svg { fill: #fff; }
+  .site-header nav { display: flex; gap: 1.1rem; }
+  .site-header nav a { color: var(--muted); font-size: .97rem; text-decoration: none; padding: .3rem 0; }
+  .site-header nav a:hover { color: var(--ink); text-decoration: underline; }
+  main.wrap { padding-top: 2.75rem; padding-bottom: 3.5rem; }
+  @media (min-width: 720px) { main.wrap { padding-top: 3.25rem; } }
 
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem; }
-  section { margin: 0 0 2.25rem; }
+  .site-footer { background: var(--surface); border-top: 1px solid var(--line); padding: 2rem 0 2.5rem; font-size: .92rem; color: var(--muted); }
+  .footer-grid { display: grid; gap: 1.25rem; }
+  @media (min-width: 720px) { .footer-grid { grid-template-columns: 1fr 2fr; gap: 2.5rem; } }
+  .footer-brand { font-weight: 700; color: var(--ink); margin-bottom: .35rem; }
+  .site-footer strong { color: var(--ink); font-weight: 600; }
+  .site-footer p { margin-bottom: .6rem; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow); }
+  section { margin: 0 0 2.75rem; }
+  .section-head { margin-bottom: 1.1rem; }
+  .section-head p { color: var(--muted); margin: 0; max-width: 44rem; }
   .table { width: 100%; border-collapse: collapse; font-size: .95rem; }
-  .table th, .table td { text-align: right; padding: .45rem .5rem; border-bottom: 1px solid var(--line); }
+  .table th, .table td { text-align: right; padding: .55rem .5rem; border-bottom: 1px solid var(--line); }
   .table th:first-child, .table td:first-child { text-align: left; padding-left: 0; }
   .table thead th { font-weight: 600; color: var(--muted); font-size: .85rem; }
   .table-scroll { overflow-x: auto; }

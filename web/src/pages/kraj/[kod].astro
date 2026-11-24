@@ -1,0 +1,162 @@
+---
+// Přehled všech obcí jednoho kraje – tabulka s filtrem a řazením.
+import Base from '../../layouts/Base.astro';
+import Help from '../../components/Help.astro';
+import { getIndex, getMeta, getObec } from '../../lib/data';
+import { num, kc, plural, KRAJ_LOC } from '../../lib/format';
+
+export function getStaticPaths() {
+  return Object.keys(getMeta().kraje).map((k) => ({ params: { kod: k.toLowerCase() } }));
+}
+
+const { kod } = Astro.params as { kod: string };
+const code = kod.toUpperCase();
+const meta = getMeta();
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const name = meta.kraje[code];
+const rows = getIndex()
+  .filter((r) => r[3] === code)
+  .map((r) => {
+    const o = getObec(r[0]);
+    const y = o.years.at(-1);
+    const pop = y?.population || 0;
+    const per = (x: number | null | undefined) => (x == null || !pop ? null : Math.round(x / pop));
+    return {
+      id: r[0], name: r[1], okres: r[2], pop,
+      inc: per(y?.income.total), exp: per(y?.expense.total), inv: per(y?.expense.capital),
+    };
+  });
+const totalPop = rows.reduce((s, r) => s + r.pop, 0);
+const okresy = [...new Set(rows.map((r) => r.okres).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'cs'));
+---
+
+<Base title={`${name} – obce a jejich rozpočty | Rozpočty obcí`} description={`Příjmy, výdaje a investice všech ${rows.length} obcí ${KRAJ_LOC[code] ?? ''} na obyvatele.`} canonicalPath={`kraj/${kod}/`}>
+  <div slot="hero" class="hero">
+    <div class="wrap">
+      <nav class="crumbs" aria-label="Drobečková navigace"><a href={base}>Úvod</a> <span aria-hidden="true">›</span> <span aria-current="page">{name}</span></nav>
+      <h1>{name}</h1>
+      <p class="facts"><span><strong>{num(rows.length)}</strong> {plural(rows.length, 'obec', 'obce', 'obcí')}</span><span><strong>{num(totalPop)}</strong> obyvatel</span><span>rok <strong>{meta.latestYear}</strong></span></p>
+    </div>
+  </div>
+
+  <section aria-labelledby="h-obce">
+    <div class="section-head">
+      <h2 id="h-obce">Obce {KRAJ_LOC[code]}</h2>
+      <p>Částky jsou v korunách na jednoho obyvatele za rok {meta.latestYear}. Kliknutím na záhlaví sloupce tabulku seřadíte.</p>
+    </div>
+    <div class="card">
+      <div class="filters">
+        <label>
+          <span>Hledat obec</span>
+          <input type="search" id="f-name" placeholder="např. Lhota" autocomplete="off" />
+        </label>
+        {okresy.length > 1 && (
+          <label>
+            <span>Okres</span>
+            <select id="f-okres">
+              <option value="">všechny okresy</option>
+              {okresy.map((o) => <option value={o}>{o}</option>)}
+            </select>
+          </label>
+        )}
+        <p class="count muted small" role="status" aria-live="polite" id="f-count">{num(rows.length)} {plural(rows.length, 'obec', 'obce', 'obcí')}</p>
+      </div>
+      <div class="table-scroll">
+        <table class="table sortable" id="obce">
+          <thead>
+            <tr>
+              <th scope="col" aria-sort="none"><button type="button" data-key="name" data-type="text">Obec</button></th>
+              <th scope="col" aria-sort="descending"><button type="button" data-key="pop">Obyvatel</button></th>
+              <th scope="col" aria-sort="none"><button type="button" data-key="inc">Příjmy / obyv.</button></th>
+              <th scope="col" aria-sort="none"><button type="button" data-key="exp">Výdaje / obyv.</button></th>
+              <th scope="col" aria-sort="none"><button type="button" data-key="inv">Investice / obyv.</button></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr data-name={r.name} data-okres={r.okres} data-pop={r.pop} data-inc={r.inc ?? -1} data-exp={r.exp ?? -1} data-inv={r.inv ?? -1}>
+                <th scope="row"><a href={`${base}obec/${r.id}/`}>{r.name}</a>{r.okres && <span class="okres">okres {r.okres}</span>}</th>
+                <td>{num(r.pop)}</td>
+                <td>{kc(r.inc)}</td>
+                <td>{kc(r.exp)}</td>
+                <td>{kc(r.inv)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Help label="Proč jsou čísla u malých obcí tak rozdílná?">
+        <p>
+          U obcí s pár desítkami obyvatel stačí jedna oprava silnice nebo nový obecní dům a výdaje na obyvatele
+          vyskočí na několikanásobek. Srovnávejte proto spíš obce podobné velikosti a dívejte se i na vývoj
+          v čase na stránce obce.
+        </p>
+      </Help>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { fold } from '../../lib/format';
+  const table = document.getElementById('obce') as HTMLTableElement;
+  const tbody = table.tBodies[0];
+  const rows = [...tbody.rows];
+  const nameInput = document.getElementById('f-name') as HTMLInputElement;
+  const okresSel = document.getElementById('f-okres') as HTMLSelectElement | null;
+  const count = document.getElementById('f-count')!;
+  const folded = new Map(rows.map((r) => [r, fold(r.dataset.name!)]));
+
+  function filter() {
+    const q = fold(nameInput.value.trim());
+    const ok = okresSel?.value ?? '';
+    let n = 0;
+    for (const r of rows) {
+      const show = (!q || folded.get(r)!.includes(q)) && (!ok || r.dataset.okres === ok);
+      r.hidden = !show;
+      if (show) n++;
+    }
+    const word = n === 1 ? 'obec' : n >= 2 && n <= 4 ? 'obce' : 'obcí';
+    count.textContent = `${n.toLocaleString('cs-CZ')} ${word}`;
+  }
+  nameInput.addEventListener('input', filter);
+  okresSel?.addEventListener('change', filter);
+
+  for (const btn of table.querySelectorAll<HTMLButtonElement>('thead button')) {
+    btn.addEventListener('click', () => {
+      const th = btn.parentElement!;
+      const key = btn.dataset.key!;
+      const text = btn.dataset.type === 'text';
+      const dir = th.getAttribute('aria-sort') === 'descending' ? 'ascending' : th.getAttribute('aria-sort') === 'ascending' ? 'descending' : text ? 'ascending' : 'descending';
+      table.querySelectorAll('thead th').forEach((t) => t.setAttribute('aria-sort', 'none'));
+      th.setAttribute('aria-sort', dir);
+      const sign = dir === 'ascending' ? 1 : -1;
+      rows.sort((a, b) =>
+        text
+          ? sign * a.dataset[key]!.localeCompare(b.dataset[key]!, 'cs')
+          : sign * (Number(a.dataset[key]) - Number(b.dataset[key])),
+      );
+      tbody.append(...rows);
+    });
+  }
+</script>
+
+<style>
+  .hero { background: var(--hero); color: var(--hero-ink); padding: 1.25rem 0 1.75rem; }
+  .crumbs { font-size: .92rem; color: var(--hero-muted); margin-bottom: 1.25rem; }
+  .crumbs a { color: var(--hero-ink); }
+  .hero h1 { color: var(--hero-ink); }
+  .facts { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; color: var(--hero-muted); margin: .25rem 0 0; }
+  .facts strong { color: var(--hero-ink); }
+  .filters { display: flex; flex-wrap: wrap; gap: .75rem 1rem; align-items: flex-end; margin-bottom: 1rem; }
+  .filters label { display: flex; flex-direction: column; gap: .25rem; font-weight: 600; font-size: .92rem; }
+  .filters input, .filters select { font: inherit; font-weight: 400; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px; padding: .45rem .6rem; min-height: 42px; }
+  .count { margin: 0 0 .6rem auto; }
+  .sortable th button { all: unset; cursor: pointer; font-weight: 600; color: var(--muted); }
+  .sortable th button:focus-visible { outline: 3px solid var(--focus); border-radius: 4px; }
+  .sortable th[aria-sort='ascending'] button::after { content: ' ▲'; font-size: .7em; }
+  .sortable th[aria-sort='descending'] button::after { content: ' ▼'; font-size: .7em; }
+  .sortable th[aria-sort]:not([aria-sort='none']) button { color: var(--ink); }
+  tbody th { font-weight: 600; }
+  .okres { display: block; font-weight: 400; font-size: .82rem; color: var(--muted); }
+  tbody tr:hover { background: var(--bg-soft); }
+</style>

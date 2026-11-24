@@ -2,10 +2,15 @@
 import Base from '../../layouts/Base.astro';
 import Search from '../../components/Search.astro';
 import CategoryBars from '../../components/CategoryBars.astro';
+import CompareRows from '../../components/CompareRows.astro';
 import TrendChart from '../../components/TrendChart.astro';
+import Help from '../../components/Help.astro';
+import Icon from '../../components/Icon.astro';
+import Glossary from '../../components/Glossary.astro';
 import { getIndex, getMeta, getObec, duplicateNames } from '../../lib/data';
-import { kc, money, num, pct, diffShort, groupLabel, plural } from '../../lib/format';
+import { kc, money, num, pct, groupLabel, plural } from '../../lib/format';
 import { highlightSentence } from '../../lib/highlight';
+import { buildSummary } from '../../lib/summary';
 
 export function getStaticPaths() {
   return getIndex().map((r) => ({ params: { id: r[0] } }));
@@ -18,6 +23,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const dup = duplicateNames().has(o.name);
 const title = dup && o.okres ? `${o.name} (okres ${o.okres})` : o.name;
 const krajName = meta.kraje[o.kraj] ?? o.kraj;
+const kind = o.isRegion ? 'Hlavní město' : o.statutory ? 'Statutární město' : 'Obec';
 
 const y = o.years.at(-1)!;
 const pop = y.population ?? 0;
@@ -25,10 +31,10 @@ const pc = (x: number | null | undefined) => (x == null || !pop ? null : x / pop
 const g = y.group;
 const med = (k: string) => g?.median[k] ?? null;
 const compare = !!g && !o.isRegion;
-const d = (val: number | null, m: number | null) => (val == null || !m ? null : val / m - 1);
+const exp = y.expense.total ?? 0;
 
 const saldo = y.income.total != null && y.expense.total != null ? y.income.total - y.expense.total : null;
-const investShare = y.expense.total ? y.expense.capital / y.expense.total : null;
+const investShare = exp ? y.expense.capital / exp : null;
 
 const catRows = meta.categories
   .map((c) => ({
@@ -36,209 +42,344 @@ const catRows = meta.categories
     name: c.name,
     description: c.description,
     value: pc(y.expense.categories[c.id]) ?? 0,
+    total: y.expense.categories[c.id] ?? 0,
+    share: exp ? (y.expense.categories[c.id] ?? 0) / exp : 0,
     median: compare ? med('cat_' + c.id) : null,
   }))
   .sort((a, b) => (a.id === 'ostatni' ? 1 : b.id === 'ostatni' ? -1 : b.value - a.value));
 
 const incomeParts = [
-  { key: 'tax', name: 'Daně', help: 'podíl na celostátních daních (DPH, daně z příjmů) a daň z nemovitostí', v: y.income.tax },
-  { key: 'grants', name: 'Dotace a transfery', help: 'peníze od státu, kraje a z EU – na provoz i na investice', v: y.income.grants },
-  { key: 'nontax', name: 'Nedaňové příjmy', help: 'nájmy, poplatky za služby, prodej dřeva, úroky', v: y.income.nontax },
-  { key: 'capital', name: 'Prodej majetku', help: 'kapitálové příjmy – prodej pozemků, budov apod.', v: y.income.capital },
+  { key: 'tax', name: 'Daně', help: 'Hlavně podíl na celostátních daních (DPH, daň z příjmů), který stát dělí podle počtu obyvatel. Také daň z nemovitostí.', v: y.income.tax },
+  { key: 'grants', name: 'Dotace a transfery', help: 'Peníze od státu, kraje a z EU – na provoz i na konkrétní investice.', v: y.income.grants },
+  { key: 'nontax', name: 'Nedaňové příjmy', help: 'Nájmy, poplatky za služby, prodej dřeva z obecních lesů, úroky.', v: y.income.nontax },
+  { key: 'capital', name: 'Prodej majetku', help: 'Kapitálové příjmy – prodej pozemků, bytů nebo budov.', v: y.income.capital },
 ];
 const incTotal = Math.max(1, incomeParts.reduce((s, p) => s + Math.max(0, p.v), 0));
 
 const comparisons = [
-  { name: 'Příjmy celkem', v: pc(y.income.total), m: med('income_total') },
-  { name: 'z toho daňové příjmy', v: pc(y.income.tax), m: med('income_tax') },
-  { name: 'Výdaje celkem', v: pc(y.expense.total), m: med('expense_total') },
-  { name: 'z toho běžný provoz', v: pc(y.expense.current), m: med('expense_current') },
-  { name: 'z toho investice', v: pc(y.expense.capital), m: med('expense_capital') },
+  { name: 'Příjmy', hint: 'vše, co obec vybrala', value: pc(y.income.total), median: med('income_total') },
+  { name: 'Daňové příjmy', hint: 'podíl na daních, daň z nemovitostí', value: pc(y.income.tax), median: med('income_tax'), sub: true },
+  { name: 'Dotace', hint: 'od státu, kraje a z EU', value: pc(y.income.grants), median: med('income_grants'), sub: true },
+  { name: 'Výdaje', hint: 'vše, co obec utratila', value: pc(y.expense.total), median: med('expense_total') },
+  { name: 'Provoz', hint: 'běžné výdaje', value: pc(y.expense.current), median: med('expense_current'), sub: true },
+  { name: 'Investice', hint: 'stavby, rekonstrukce, majetek', value: pc(y.expense.capital), median: med('expense_capital'), sub: true },
 ];
 
 const points = o.years.map((x) => ({ year: x.year, income: x.income.total, expense: x.expense.total, capital: x.expense.capital }));
 const sentence = highlightSentence(o, meta);
+const summary = buildSummary(o, meta);
+const fulfil = (c: number | null, b: number | null) => (c == null || !b ? null : c / b);
 const budgetRows = [
   { name: 'Příjmy', a: y.budget.incomeApproved, b: y.budget.incomeAmended, c: y.income.total },
   { name: 'Výdaje', a: y.budget.expenseApproved, b: y.budget.expenseAmended, c: y.expense.total },
 ];
 const description = `Hospodaření obce ${o.name} v roce ${y.year}: příjmy ${money(y.income.total)}, výdaje ${money(y.expense.total)}. ${sentence ?? ''}`.trim();
+const nav = [
+  ['zkratka', 'Ve zkratce'],
+  ['kam', 'Kam jdou peníze'],
+  ...(compare ? [['srovnani', 'Srovnání']] : []),
+  ['odkud', 'Odkud jsou peníze'],
+  ['vyvoj', 'Vývoj'],
+  ['plan', 'Plán a skutečnost'],
+  ['slovnicek', 'Slovníček'],
+];
 ---
 
 <Base title={`${title} – rozpočet obce | Rozpočty obcí`} description={description} ogImage={`og/${o.id}.png`} canonicalPath={`obec/${o.id}/`}>
-  <div class="top-search"><Search id="hledat-obec" /></div>
+  <Fragment slot="hero">
+  <div class="hero">
+    <div class="wrap">
+      <div class="hero-top">
+        <nav class="crumbs" aria-label="Drobečková navigace">
+          <a href={base}>Úvod</a> <span aria-hidden="true">›</span>
+          <a href={`${base}kraj/${o.kraj.toLowerCase()}/`}>{krajName}</a> <span aria-hidden="true">›</span>
+          <span aria-current="page">{o.name}</span>
+        </nav>
+        <div class="hero-search"><Search id="hledat-obec" /></div>
+      </div>
+      <p class="eyebrow">{kind}{o.okres && o.okres !== 'Praha' ? ` · okres ${o.okres}` : ''} · {krajName}</p>
+      <h1>{o.name}</h1>
+      <p class="facts">
+        <span><strong>{num(pop)}</strong> obyvatel</span>
+        <span>hospodaření za rok <strong>{y.year}</strong></span>
+        <span>IČO {o.ico}</span>
+      </p>
 
-  <header class="obec-head">
-    <p class="eyebrow muted">{o.isRegion ? 'Hlavní město' : o.statutory ? 'Statutární město' : 'Obec'} · {o.okres && o.okres !== 'Praha' ? `okres ${o.okres}, ` : ''}{krajName}</p>
-    <h1>{o.name}</h1>
-    <p class="muted">
-      {num(pop)} obyvatel (k 1. 1. {y.year}) · hospodaření za rok <strong>{y.year}</strong> · IČO {o.ico}
-    </p>
-  </header>
+      <ul class="kpis" aria-label="Hlavní čísla">
+        <li class="kpi">
+          <span class="kpi-label"><Icon name="prijmy" size={18} /> Příjmy</span>
+          <span class="kpi-big">{money(y.income.total)}</span>
+          <span class="kpi-sub">{kc(pc(y.income.total))} na obyvatele</span>
+        </li>
+        <li class="kpi">
+          <span class="kpi-label"><Icon name="vydaje" size={18} /> Výdaje</span>
+          <span class="kpi-big">{money(y.expense.total)}</span>
+          <span class="kpi-sub">{kc(pc(y.expense.total))} na obyvatele</span>
+        </li>
+        <li class="kpi">
+          <span class="kpi-label"><Icon name="investice" size={18} /> Investice</span>
+          <span class="kpi-big">{money(y.expense.capital)}</span>
+          <span class="kpi-sub">{investShare != null ? `${pct(investShare)} všech výdajů` : '–'}</span>
+        </li>
+        <li class="kpi">
+          <span class="kpi-label"><Icon name="saldo" size={18} /> {saldo != null && saldo < 0 ? 'Schodek' : 'Přebytek'}</span>
+          <span class="kpi-big">{money(saldo != null ? Math.abs(saldo) : null)}</span>
+          <span class="kpi-sub">{saldo != null && saldo < 0 ? 'výdaje byly vyšší než příjmy' : 'příjmy byly vyšší než výdaje'}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <nav class="toc" aria-label="Obsah stránky">
+    <ul class="wrap">{nav.map(([href, label]) => <li><a href={`#${href}`}>{label}</a></li>)}</ul>
+  </nav>
+  </Fragment>
 
-  {sentence && (
-    <p class="highlight">{sentence}</p>
-  )}
 
-  <section aria-labelledby="h-cisla">
-    <h2 id="h-cisla" class="visually-hidden">Hlavní čísla</h2>
-    <div class="kpis">
-      <div class="card kpi">
-        <h3>Příjmy</h3>
-        <p class="big">{money(y.income.total)}</p>
-        <p class="muted small">{kc(pc(y.income.total))} na obyvatele</p>
-      </div>
-      <div class="card kpi">
-        <h3>Výdaje</h3>
-        <p class="big">{money(y.expense.total)}</p>
-        <p class="muted small">{kc(pc(y.expense.total))} na obyvatele</p>
-      </div>
-      <div class="card kpi">
-        <h3>Investice</h3>
-        <p class="big">{money(y.expense.capital)}</p>
-        <p class="muted small">{investShare != null ? `${pct(investShare)} všech výdajů` : '–'}</p>
-      </div>
-      <div class="card kpi">
-        <h3>{saldo != null && saldo < 0 ? 'Schodek' : 'Přebytek'}</h3>
-        <p class="big">{money(saldo != null ? Math.abs(saldo) : null)}</p>
-        <p class="muted small">{saldo != null && saldo < 0 ? 'utratila víc, než vybrala' : 'vybrala víc, než utratila'}</p>
-      </div>
+  <section id="zkratka" aria-labelledby="h-zkratka" class="card summary">
+    <h2 id="h-zkratka">Ve zkratce</h2>
+    {sentence && <p class="highlight">{sentence}</p>}
+    <ul class="summary-list">
+      {summary.lines.map((l) => <li>{l}</li>)}
+    </ul>
+    <Help label="Odkud čísla jsou a jak je číst?">
+      <p>
+        Čísla pocházejí z výkazu, který obec každý měsíc posílá Ministerstvu financí (FIN 2-12 M).
+        Bereme stav k 31. prosinci, tedy co obec za celý rok <strong>skutečně</strong> vybrala a utratila – ne plán.
+      </p>
+      <p>
+        Převody mezi vlastními účty obce (např. z běžného účtu do fondu) vynecháváme, aby se nic nepočítalo
+        dvakrát. Půjčky a jejich splácení nejsou příjem ani výdaj. Částky nejsou očištěné o inflaci.
+      </p>
+    </Help>
+  </section>
+
+  <section id="kam" aria-labelledby="h-kam">
+    <div class="section-head">
+      <h2 id="h-kam">Kam jdou peníze</h2>
+      <p>
+        Výdaje za rok {y.year} rozdělené do {meta.categories.length} oblastí. Velké číslo je částka na jednoho obyvatele,
+        pod ním celková částka a podíl na všech výdajích.
+      </p>
+    </div>
+    <div class="card">
+      <CategoryBars rows={catRows} showMedian={compare} />
+      {compare && (
+        <p class="legend small" aria-hidden="true">
+          <span class="key bar-key"></span> {o.name}
+          <span class="key med-key"></span> medián podobných obcí
+          <span class="chip-demo more">+24 %</span> víc
+          <span class="chip-demo less">−24 %</span> méně
+        </p>
+      )}
+      <Help label="Jak číst tento graf?">
+        <p>
+          Modrý pruh ukazuje, kolik korun na jednoho obyvatele obec za rok dala na danou oblast. Svislá čárka je
+          <strong>medián podobných obcí</strong>{compare && g ? ` (${groupLabel(g.band, g.scope, o.kraj)})` : ''}:
+          polovina z nich dala víc, polovina méně.
+        </p>
+        <p>
+          Vyšší nebo nižší číslo samo o sobě neznamená dobré nebo špatné hospodaření. Obec, která v daném roce
+          stavěla školu, bude mít školství vysoko; obec bez vlastní školy naopak nízko.
+        </p>
+        <p>
+          Oblasti určujeme podle tzv. paragrafů rozpočtové skladby. <a href={`${base}o-projektu/#kategorie`}>Co přesně do které oblasti patří.</a>
+        </p>
+      </Help>
     </div>
   </section>
 
-  <section aria-labelledby="h-kam" class="card">
-    <h2 id="h-kam">Kam jdou peníze</h2>
-    <p class="muted small">
-      Výdaje v roce {y.year} v korunách na jednoho obyvatele, podle účelu.
-      {compare && g && <>Svislá čárka je medián pro {groupLabel(g.band, g.scope, o.kraj)}.</>}
-    </p>
-    <CategoryBars rows={catRows} showMedian={compare} />
-  </section>
-
   {compare && g && (
-    <section aria-labelledby="h-srov">
-      <h2 id="h-srov">Srovnání s podobnými obcemi</h2>
-      <p>
-        Porovnáváme s mediánem pro <strong>{groupLabel(g.band, g.scope, o.kraj)}</strong>
-        ({g.n} {plural(g.n, 'obec', 'obce', 'obcí')}, rok {y.year}).
-        {g.scope === 'cr' && <span class="muted"> V kraji je takových obcí méně než {meta.minGroupSize}, proto srovnáváme celostátně.</span>}
-        {' '}Medián je hodnota „uprostřed“ – polovina obcí má víc, polovina méně.
-      </p>
-      <div class="table-scroll">
-        <table class="table">
-          <caption class="visually-hidden">Srovnání v Kč na obyvatele</caption>
-          <thead><tr><th scope="col">Kč na obyvatele</th><th scope="col">{o.name}</th><th scope="col">Podobné obce</th><th scope="col">Rozdíl</th></tr></thead>
-          <tbody>
-            {comparisons.map((c) => (
-              <tr class={c.name.startsWith('z toho') ? 'sub' : ''}>
-                <th scope="row">{c.name}</th>
-                <td>{kc(c.v)}</td>
-                <td>{kc(c.m)}</td>
-                <td>{diffShort(d(c.v, c.m))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <section id="srovnani" aria-labelledby="h-srov">
+      <div class="section-head">
+        <h2 id="h-srov">Srovnání s podobnými obcemi</h2>
+        <p>
+          Porovnáváme s mediánem pro <strong>{groupLabel(g.band, g.scope, o.kraj)}</strong>
+          ({g.n} {plural(g.n, 'další obec', 'další obce', 'dalších obcí')}, rok {y.year}). Vše v Kč na obyvatele.
+        </p>
+      </div>
+      <div class="card">
+        <CompareRows rows={comparisons} obecName={o.name} />
+        <Help label="Proč medián a koho srovnáváme?">
+          <p>
+            Do skupiny patří obce se stejným počtem obyvatel (ve stejném pásmu) ve stejném kraji.
+            {g.scope === 'cr'
+              ? ` V kraji je takových obcí méně než ${meta.minGroupSize}, proto srovnáváme se stejně velkými obcemi v celé ČR.`
+              : ''}
+          </p>
+          <p>
+            Medián je prostřední hodnota – polovina obcí má víc, polovina méně. Na rozdíl od průměru ho nezkreslí jedna
+            obec s mimořádnou investicí. Samotná obec {o.name} se do mediánu nepočítá.
+          </p>
+        </Help>
       </div>
     </section>
   )}
 
   {o.isRegion && (
     <p class="note card">
-      Praha je zároveň obcí i krajem – platí například střední školy nebo krajské silnice. Její výdaje proto
-      nesrovnáváme s ostatními městy. Peníze, které Praha posílá městským částem (v roce {y.year}
-      {' '}{money(y.districtTransfers ?? null)}), v jejích výdajích nejsou; utrácejí je městské části, které tu zatím
-      nezobrazujeme.
+      <Icon name="info" size={20} />
+      <span>
+        Praha je zároveň obcí i krajem – platí například střední školy nebo krajské silnice. Její výdaje proto
+        nesrovnáváme s ostatními městy. Peníze, které Praha posílá městským částem (v roce {y.year}{' '}
+        {money(y.districtTransfers ?? null)}), v jejích výdajích nejsou; utrácejí je městské části, které tu zatím
+        nezobrazujeme.
+      </span>
     </p>
   )}
   {!o.isRegion && y.districtTransfers && (
     <p class="note card">
-      Statutární město navíc v roce {y.year} poslalo {money(y.districtTransfers)} svým městským obvodům
-      nebo částem. Tyto převody v jeho výdajích nejsou (utrácejí je obvody), stejně jako na portálu Monitor.
+      <Icon name="info" size={20} />
+      <span>
+        Statutární město navíc v roce {y.year} poslalo {money(y.districtTransfers)} svým městským obvodům
+        nebo částem. Tyto převody v jeho výdajích nejsou (utrácejí je obvody), stejně jako na portálu Monitor.
+      </span>
     </p>
   )}
 
-  <section aria-labelledby="h-odkud" class="card">
-    <h2 id="h-odkud">Odkud peníze přicházejí</h2>
-    <div class="stack" aria-hidden="true">
-      {incomeParts.map((p) => p.v > 0 && <span class={`seg ${p.key}`} style={`width:${((p.v / incTotal) * 100).toFixed(2)}%`}></span>)}
+  <section id="odkud" aria-labelledby="h-odkud">
+    <div class="section-head">
+      <h2 id="h-odkud">Odkud jsou peníze</h2>
+      <p>Z čeho se skládaly příjmy {y.year} ({money(y.income.total)}).</p>
     </div>
-    <ul class="inc-list">
-      {incomeParts.map((p) => (
-        <li>
-          <span class={`dot ${p.key}`} aria-hidden="true"></span>
-          <span><strong>{p.name}</strong> <span class="muted small">– {p.help}</span></span>
-          <span class="amt">{money(p.v)} <span class="muted small">({pct(Math.max(0, p.v) / incTotal)})</span></span>
-        </li>
-      ))}
-    </ul>
-  </section>
-
-  <section aria-labelledby="h-vyvoj">
-    <h2 id="h-vyvoj">Vývoj v čase</h2>
-    <TrendChart points={points} />
-  </section>
-
-  <section aria-labelledby="h-plan">
-    <h2 id="h-plan">Plán a skutečnost {y.year}</h2>
-    <p class="muted small">
-      Obec na začátku roku schválí rozpočet, během roku ho upravuje rozpočtovými opatřeními. Na webu všude
-      ukazujeme skutečnost – co obec opravdu vybrala a utratila.
-    </p>
-    <div class="table-scroll">
-      <table class="table">
-        <thead><tr><th scope="col"></th><th scope="col">Schválený rozpočet</th><th scope="col">Po změnách</th><th scope="col">Skutečnost</th></tr></thead>
-        <tbody>
-          {budgetRows.map((r) => (
-            <tr><th scope="row">{r.name}</th><td>{money(r.a)}</td><td>{money(r.b)}</td><td><strong>{money(r.c)}</strong></td></tr>
-          ))}
-        </tbody>
-      </table>
+    <div class="card">
+      <div class="stack" aria-hidden="true">
+        {incomeParts.map((p) => p.v > 0 && <span class={`seg ${p.key}`} style={`width:${((p.v / incTotal) * 100).toFixed(2)}%`}></span>)}
+      </div>
+      <ul class="inc-list">
+        {incomeParts.map((p) => (
+          <li>
+            <span class={`dot ${p.key}`} aria-hidden="true"></span>
+            <span class="inc-text"><strong>{p.name}</strong><span class="muted small">{p.help}</span></span>
+            <span class="amt"><strong>{pct(Math.max(0, p.v) / incTotal)}</strong><span class="muted small">{money(p.v)}</span></span>
+          </li>
+        ))}
+      </ul>
     </div>
   </section>
 
-  <section aria-labelledby="h-zdroj" class="source">
+  <section id="vyvoj" aria-labelledby="h-vyvoj">
+    <div class="section-head">
+      <h2 id="h-vyvoj">Vývoj v čase</h2>
+      <p>Příjmy a výdaje za posledních {o.years.length} {plural(o.years.length, 'rok', 'roky', 'let')}. Tmavší část sloupce výdajů jsou investice.</p>
+    </div>
+    <div class="card">
+      <TrendChart points={points} />
+      <Help label="Proč čísla rok od roku skáčou?">
+        <p>
+          Výdaje obcí kolísají hlavně kvůli investicím: velká stavba se zaplatí v jednom či dvou letech a pak
+          výdaje zase klesnou. Dotace často přicházejí až rok po dokončení stavby, takže příjmy a výdaje se
+          nemusí krýt. Částky nejsou očištěné o inflaci.
+        </p>
+      </Help>
+    </div>
+  </section>
+
+  <section id="plan" aria-labelledby="h-plan">
+    <div class="section-head">
+      <h2 id="h-plan">Plán a skutečnost {y.year}</h2>
+      <p>Jak se podařilo naplnit rozpočet, který obec na rok {y.year} schválila.</p>
+    </div>
+    <div class="card">
+      <div class="table-scroll">
+        <table class="table">
+          <thead><tr><th scope="col"></th><th scope="col">Schválený rozpočet</th><th scope="col">Po změnách</th><th scope="col">Skutečnost</th><th scope="col">Splněno</th></tr></thead>
+          <tbody>
+            {budgetRows.map((r) => {
+              const f = fulfil(r.c, r.b);
+              return <tr><th scope="row">{r.name}</th><td>{money(r.a)}</td><td>{money(r.b)}</td><td><strong>{money(r.c)}</strong></td><td>{f == null ? '–' : pct(f)}</td></tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Help>
+        <p>
+          <strong>Schválený rozpočet</strong> je plán, který zastupitelstvo přijme na začátku roku.
+          Během roku ho mění <strong>rozpočtovými opatřeními</strong> (např. když přijde dotace) – to je sloupec
+          <strong>po změnách</strong>. <strong>Splněno</strong> = skutečnost ÷ rozpočet po změnách.
+        </p>
+        <p>
+          Výdaje bývají pod plánem, protože se stavby posouvají a obce rozpočtují opatrně. Příjmy často plán
+          překročí, protože daňové příjmy obce odhadují střízlivě.
+        </p>
+      </Help>
+    </div>
+  </section>
+
+  <section id="slovnicek" aria-labelledby="h-slov">
+    <div class="section-head">
+      <h2 id="h-slov">Slovníček pojmů</h2>
+      <p>Co znamenají slova, která na stránce používáme.</p>
+    </div>
+    <div class="card"><Glossary id="slovnicek-list" /></div>
+  </section>
+
+  <section aria-labelledby="h-zdroj" class="source card">
     <h2 id="h-zdroj">Zdroj a data</h2>
     <p class="small">
       Zdroj dat: Ministerstvo financí ČR, Monitor státní pokladny (výkaz FIN 2-12 M); počet obyvatel Český
-      statistický úřad. Čísla jsou upravená: sečtená do kategorií, bez převodů mezi vlastními účty obce
-      (konsolidace) a přepočtená na obyvatele.
+      statistický úřad (k 1. 1. {y.year}). Čísla jsou upravená: sečtená do oblastí, bez převodů mezi vlastními
+      účty obce a přepočtená na obyvatele.
     </p>
-    <ul class="small">
-      {o.sourceUrl && <li><a href={o.sourceUrl}>{o.officialName} na portálu Monitor</a> (původní data)</li>}
-      <li><a href={`${base}data/obce/${o.id}.json`}>Data této obce ve formátu JSON</a></li>
-      <li><a href={`${base}o-projektu/`}>Jak čísla počítáme</a></li>
+    <ul class="links">
+      {o.sourceUrl && <li><a href={o.sourceUrl}><Icon name="external" size={18} /> Původní data – {o.officialName} na portálu Monitor</a></li>}
+      <li><a href={`${base}data/obce/${o.id}.json`}><Icon name="download" size={18} /> Data této obce (JSON)</a></li>
+      <li><a href={`${base}o-projektu/`}><Icon name="info" size={18} /> Jak čísla počítáme</a></li>
     </ul>
   </section>
 </Base>
 
 <style>
-  .top-search { margin-bottom: 1.75rem; }
-  .obec-head { margin-bottom: 1.25rem; }
-  .eyebrow { margin: 0 0 .25rem; font-size: .95rem; }
+  .hero { background: var(--hero); color: var(--hero-ink); padding: 1.25rem 0 1.75rem; }
+  .hero-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem 1.5rem; margin-bottom: 1.5rem; }
+  .crumbs { font-size: .92rem; color: var(--hero-muted); }
+  .crumbs a { color: var(--hero-ink); }
+  .hero-search { flex: 1 1 260px; max-width: 360px; }
+  .eyebrow { margin: 0 0 .3rem; color: var(--hero-muted); font-size: .98rem; }
+  .hero h1 { color: var(--hero-ink); }
+  .facts { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; color: var(--hero-muted); margin: .25rem 0 1.5rem; }
+  .facts strong { color: var(--hero-ink); }
+  .kpis { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+  @media (min-width: 760px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; } }
+  .kpi { display: flex; flex-direction: column; gap: .1rem; padding: .9rem 1rem; border-radius: var(--radius); background: rgb(255 255 255 / .09); border: 1px solid rgb(255 255 255 / .16); }
+  .kpi-label { display: flex; align-items: center; gap: .35rem; color: var(--hero-muted); font-size: .92rem; font-weight: 600; }
+  .kpi-big { font-size: clamp(1.2rem, 4.6vw, 1.65rem); font-weight: 700; line-height: 1.2; }
+  .kpi-sub { color: var(--hero-muted); font-size: .88rem; }
+
+  .toc { position: sticky; top: 0; z-index: 15; padding: .6rem 0; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .toc ul { list-style: none; display: flex; gap: .4rem; margin: 0 auto; overflow-x: auto; scrollbar-width: none; }
+  .toc a { display: inline-block; white-space: nowrap; padding: .35rem .75rem; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: .92rem; }
+  .toc a:hover { border-color: var(--accent); color: var(--accent-ink); }
+
+  .summary h2 { margin-bottom: .75rem; }
   .highlight {
-    font-size: 1.25rem; line-height: 1.4; font-weight: 600; margin: 0 0 1.75rem;
-    padding: .9rem 1.1rem; border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 1.15rem; line-height: 1.45; font-weight: 600; margin: 0 0 1rem;
+    padding: .8rem 1rem; border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 10px 10px 0;
   }
-  .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
-  @media (min-width: 720px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  .kpi { padding: 1rem; }
-  .kpi h3 { font-size: .95rem; color: var(--muted); font-weight: 600; margin: 0 0 .2rem; }
-  .big { font-size: clamp(1.25rem, 4.5vw, 1.6rem); font-weight: 700; margin: 0 0 .1rem; line-height: 1.2; }
-  .kpi p:last-child { margin: 0; }
-  section.card { padding: 1.25rem; }
-  tr.sub th { font-weight: 400; padding-left: 1rem; color: var(--muted); }
-  .note { font-size: .95rem; margin: -1rem 0 2.25rem; }
-  .stack { display: flex; height: 18px; border-radius: 6px; overflow: hidden; margin: .5rem 0 1rem; gap: 2px; }
+  .summary-list { margin: 0 0 .5rem; padding-left: 1.2rem; display: grid; gap: .45rem; }
+  .summary-list li::marker { color: var(--accent); }
+
+  .legend { margin: 1.1rem 0 0; display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; color: var(--muted); }
+  .key { display: inline-block; vertical-align: middle; }
+  .bar-key { width: 18px; height: 10px; background: var(--accent); border-radius: 3px; }
+  .med-key { width: 3px; height: 16px; background: var(--median); margin-left: .6rem; }
+  .chip-demo { margin-left: .6rem; padding: 0 .45rem; border-radius: 999px; border: 1px solid currentColor; font-weight: 700; font-size: .8rem; }
+  .chip-demo.more { color: var(--more); }
+  .chip-demo.less { color: var(--less); }
+
+  .note { display: flex; gap: .7rem; align-items: flex-start; font-size: .97rem; margin: -1.25rem 0 2.75rem; background: var(--accent-soft); border-color: transparent; box-shadow: none; }
+  .note :global(svg) { flex: none; margin-top: .15rem; color: var(--accent-ink); }
+
+  .stack { display: flex; height: 22px; border-radius: 7px; overflow: hidden; margin: 0 0 1.1rem; gap: 2px; }
   .seg, .dot { background: var(--accent); }
   .tax { background: #0f5c8c; } .grants { background: #4f93c0; } .nontax { background: #9cc3df; } .capital { background: #5a5f66; }
-  .inc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
-  .inc-list li { display: grid; grid-template-columns: 14px 1fr auto; gap: .6rem; align-items: baseline; }
-  .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-  .amt { white-space: nowrap; text-align: right; }
-  @media (max-width: 560px) {
-    .inc-list li { grid-template-columns: 14px 1fr; }
-    .amt { grid-column: 2; text-align: left; }
-  }
-  .source ul { padding-left: 1.1rem; }
+  .inc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .8rem; }
+  .inc-list li { display: grid; grid-template-columns: 14px 1fr auto; gap: .75rem; align-items: start; }
+  .dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; margin-top: .3rem; }
+  .inc-text { display: flex; flex-direction: column; }
+  .amt { display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+  .amt strong { font-size: 1.1rem; }
+
+  .source h2 { font-size: 1.15rem; }
+  .links { list-style: none; padding: 0; margin: 0; display: grid; gap: .45rem; }
+  .links a { display: inline-flex; gap: .45rem; align-items: center; }
 </style>

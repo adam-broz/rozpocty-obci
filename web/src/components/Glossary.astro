@@ -1,0 +1,38 @@
+---
+// Slovníček pojmů – na stránce obce i v metodice.
+interface Props { id?: string }
+const { id = 'slovnicek' } = Astro.props;
+
+const terms: [string, string][] = [
+  ['Příjmy', 'Všechny peníze, které obec za rok získala: daně, poplatky, nájmy, prodej majetku a dotace. Bez půjček.'],
+  ['Výdaje', 'Všechny peníze, které obec za rok utratila – na provoz i na investice. Bez splácení půjček.'],
+  ['Běžné výdaje (provoz)', 'Peníze na fungování obce: platy, energie, opravy, svoz odpadu, příspěvky školám a spolkům.'],
+  ['Investice (kapitálové výdaje)', 'Peníze na nový majetek, který vydrží roky: stavby, rekonstrukce, technika, pozemky.'],
+  ['Daňové příjmy', 'Největší zdroj obcí. Většinou jde o podíl na celostátních daních (DPH, daň z příjmů), který stát rozděluje podle zákona – hlavně podle počtu obyvatel. Patří sem i daň z nemovitostí a místní poplatky.'],
+  ['Dotace a transfery', 'Peníze od státu, kraje nebo z EU. Část jde na provoz (např. na výkon státní správy), část na konkrétní investice.'],
+  ['Nedaňové příjmy', 'Peníze za služby a majetek obce: nájemné, prodej dřeva z obecních lesů, poplatky, úroky.'],
+  ['Přebytek / schodek', 'Rozdíl mezi příjmy a výdaji. Schodek není automaticky špatně – obec může investovat z peněz našetřených v minulých letech nebo z úvěru.'],
+  ['Na obyvatele', 'Částka vydělená počtem obyvatel obce k 1. lednu daného roku (podle ČSÚ). Umožňuje srovnávat velké a malé obce.'],
+  ['Medián', 'Prostřední hodnota: polovina podobných obcí má víc, polovina méně. Na rozdíl od průměru ho nezkreslí jedna obec s mimořádnou investicí.'],
+  ['Podobné obce', 'Obce ze stejné velikostní skupiny (podle počtu obyvatel) ve stejném kraji. Když jich je v kraji málo, bereme celou ČR.'],
+  ['Schválený rozpočet', 'Plán, který zastupitelstvo schválí na začátku roku. Během roku ho mění tzv. rozpočtovými opatřeními.'],
+  ['Skutečnost', 'Co obec opravdu vybrala a utratila do 31. prosince. Všechna čísla na webu jsou skutečnost, ne plán.'],
+  ['Konsolidace', 'Odečtení převodů mezi vlastními účty obce. Kdyby se nevynechaly, stejné peníze by se započítaly dvakrát.'],
+];
+---
+
+<dl class="glossary" id={id}>
+  {terms.map(([t, d]) => (
+    <div>
+      <dt>{t}</dt>
+      <dd>{d}</dd>
+    </div>
+  ))}
+</dl>
+
+<style>
+  .glossary { display: grid; gap: .9rem 2rem; margin: 0; }
+  @media (min-width: 720px) { .glossary { grid-template-columns: 1fr 1fr; } }
+  dt { font-weight: 700; }
+  dd { margin: .15rem 0 0; color: var(--muted); font-size: .95rem; }
+</style>

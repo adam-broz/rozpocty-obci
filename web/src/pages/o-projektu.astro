@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { getMeta } from '../lib/data';
 import { BAND_PHRASE } from '../lib/format';
+import Glossary from '../components/Glossary.astro';
 
 const meta = getMeta();
 const repo = import.meta.env.PUBLIC_REPO_URL as string | undefined;
@@ -65,7 +66,7 @@ const repo = import.meta.env.PUBLIC_REPO_URL as string | undefined;
       bude mít výdaje vyšší – to je v pořádku. Srovnání je kontext, ne hodnocení.
     </p>
 
-    <h2>Kategorie výdajů</h2>
+    <h2 id="kategorie">Kategorie výdajů</h2>
     <p>
       Výdaje třídíme podle tzv. paragrafů rozpočtové skladby (odvětvové třídění) do jedenácti oblastí. Přesné
       přiřazení je v souboru {repo ? <a href={`${repo}/blob/main/pipeline/categories.yaml`}>categories.yaml</a> : <code>pipeline/categories.yaml</code>}
@@ -79,6 +80,9 @@ const repo = import.meta.env.PUBLIC_REPO_URL as string | undefined;
         </>
       ))}
     </dl>
+
+    <h2 id="slovnicek">Slovníček pojmů</h2>
+    <Glossary id="slovnicek-list" />
 
     <h2>Známá omezení</h2>
     <ul>
@@ -98,7 +102,7 @@ const repo = import.meta.env.PUBLIC_REPO_URL as string | undefined;
 </Base>
 
 <style>
-  .prose { max-width: 42rem; }
+  .prose { max-width: 46rem; }
   .prose h2 { margin-top: 2rem; }
   .prose li { margin-bottom: .4rem; }
   .lead { font-size: 1.15rem; }

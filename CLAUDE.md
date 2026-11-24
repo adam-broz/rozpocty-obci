@@ -21,8 +21,10 @@ web/                     Astro 5, bez UI frameworku
   src/lib/data.ts        typy a čtení JSON při buildu (fs)
   src/lib/format.ts      formátování čísel, české fráze (kraj v 6. pádě, velikostní skupiny)
   src/lib/highlight.ts   věta se „zajímavým číslem“
-  src/components/        Search (ARIA combobox), CategoryBars (HTML/CSS), TrendChart (SVG)
-  src/pages/             index, o-projektu, obec/[id] (getStaticPaths z index.json)
+  src/lib/summary.ts     věty „Ve zkratce“ (neosobní formulace – bez skloňování podle rodu obce)
+  src/components/        Search (ARIA combobox), CategoryBars, CompareRows, TrendChart (SVG),
+                         Help (rozbalovací vysvětlivka <details>), Glossary (slovníček), Icon (ruční SVG ikony)
+  src/pages/             index, o-projektu, obec/[id], kraj/[kod] (tabulka obcí s filtrem a řazením)
 .github/workflows/update.yml   měsíčně: pipeline → pytest → build → GitHub Pages
 ```
 
@@ -68,6 +70,8 @@ cd web && npm run build               # OG + 6 256 stránek, ~2 min (+ OG poprv�
 - `SITE_URL`, `BASE_PATH` a `PUBLIC_REPO_URL` nastavuje Action. Lokálně se použije base `/rozpocty-obci`.
   Odkazy proto vždy skládejte přes `import.meta.env.BASE_URL`.
 - `scopedStyleStrategy: 'class'`: elementy vytvořené v JS (našeptávač) potřebují `:global(...)`.
+- Globální `.wrap` nastavuje `padding`, proto odsazení `main` cílí na `main.wrap` (jinak ho `.wrap` přebije).
+- Celošířkové pruhy (tmavá hlavička obce, lišta sekcí) se vkládají do `<Fragment slot="hero">` mimo `main`.
 - Satori potřebuje fonty latin a latin-ext jako **dvě různé rodiny** (`fontFamily: 'S, SX'`),
   jinak chybí diakritika. Rámec má `boxSizing: 'border-box'`.
 - OG obrázky se přegenerují podle otisku obsahu v `public/og/.manifest.json`, ne podle času souboru.

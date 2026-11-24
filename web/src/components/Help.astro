@@ -1,0 +1,31 @@
+---
+// Rozbalovací vysvětlivka „Co to znamená?“ – funguje bez JavaScriptu,
+// ovládá se klávesnicí (Enter/mezerník) a čtečky ji přečtou jako tlačítko.
+interface Props { label?: string }
+const { label = 'Co to znamená?' } = Astro.props;
+---
+
+<details class="help">
+  <summary>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01" /></svg>
+    <span>{label}</span>
+  </summary>
+  <div class="help-body"><slot /></div>
+</details>
+
+<style>
+  .help { margin: .35rem 0 0; font-size: .92rem; }
+  .help summary {
+    display: inline-flex; align-items: center; gap: .3rem; cursor: pointer;
+    color: var(--accent-ink); list-style: none; border-radius: 6px; padding: .1rem .2rem .1rem 0;
+  }
+  .help summary::-webkit-details-marker { display: none; }
+  .help summary span { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+  .help[open] summary span { text-decoration-style: solid; }
+  .help-body {
+    margin-top: .45rem; padding: .7rem .85rem; border-radius: 8px;
+    background: var(--bg-soft); color: var(--ink); line-height: 1.5;
+  }
+  .help-body :global(p) { margin: 0 0 .5rem; }
+  .help-body :global(p:last-child) { margin: 0; }
+</style>

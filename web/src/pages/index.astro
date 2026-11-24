@@ -1,8 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
 import Search from '../components/Search.astro';
+import Icon from '../components/Icon.astro';
 import { getIndex, getMeta } from '../lib/data';
-import { num } from '../lib/format';
+import { num, plural } from '../lib/format';
 
 const meta = getMeta();
 const index = getIndex();
@@ -11,6 +12,12 @@ const examples = ['554782', '582786', '533955', '549002', '561771']
   .map((id) => index.find((r) => r[0] === id))
   .filter((r): r is NonNullable<typeof r> => !!r);
 const totalPop = index.reduce((s, r) => s + r[4], 0);
+const kraje = Object.entries(meta.kraje).map(([code, name]) => ({
+  code,
+  name,
+  n: index.filter((r) => r[3] === code).length,
+}));
+const biggest = index.slice(0, 12);
 ---
 
 <Base
@@ -19,55 +26,114 @@ const totalPop = index.reduce((s, r) => s + r[4], 0);
   ogImage="og/index.png"
   canonicalPath=""
 >
-  <section class="hero">
-    <h1>Kam jdou peníze vaší obce?</h1>
-    <p class="lead">
-      Příjmy a výdaje všech {num(index.length)} obcí v Česku za roky {meta.years[0]}–{meta.latestYear}.
-      Přepočtené na obyvatele a porovnané s podobně velkými obcemi ve stejném kraji.
-    </p>
-    <Search large />
-    <p class="examples small">
-      Například:
-      {examples.map((r, i) => (
-        <>
-          <a href={`${base}obec/${r[0]}/`}>{r[1]}</a>{i < examples.length - 1 ? ', ' : ''}
-        </>
-      ))}
-    </p>
-  </section>
+  <div slot="hero" class="hero">
+    <div class="wrap">
+      <h1>Kam jdou peníze vaší obce?</h1>
+      <p class="lead">
+        Příjmy a výdaje všech {num(index.length)} obcí v Česku za roky {meta.years[0]}–{meta.latestYear}, přepočtené
+        na jednoho obyvatele a porovnané s podobně velkými obcemi ve stejném kraji.
+      </p>
+      <div class="search-box"><Search large /></div>
+      <p class="examples">
+        Zkuste například:
+        {examples.map((r) => <a href={`${base}obec/${r[0]}/`}>{r[1]}</a>)}
+      </p>
+    </div>
+  </div>
 
-  <section class="how" aria-labelledby="h-jak">
-    <h2 id="h-jak">Co tu najdete</h2>
+  <section aria-labelledby="h-co">
+    <div class="section-head">
+      <h2 id="h-co">Co se u každé obce dozvíte</h2>
+      <p>Všechno z oficiálních dat, vysvětlené bez úřednických zkratek.</p>
+    </div>
     <ol class="steps">
       <li class="card">
-        <h3>Kolik obec má a utrácí</h3>
-        <p>Příjmy a výdaje za celý rok podle skutečnosti, ne podle plánu. Bez převodů mezi vlastními účty, aby se nic nepočítalo dvakrát.</p>
+        <span class="step-ico"><Icon name="prijmy" size={22} /></span>
+        <h3>Kolik obec vybrala a utratila</h3>
+        <p>Příjmy, výdaje, investice a přebytek nebo schodek za celý rok – podle skutečnosti, ne podle plánu.</p>
       </li>
       <li class="card">
-        <h3>Na co peníze jdou</h3>
-        <p>Jedenáct srozumitelných oblastí – od dopravy a škol po odpady a hasiče – v korunách na jednoho obyvatele.</p>
+        <span class="step-ico"><Icon name="bydleni" size={22} /></span>
+        <h3>Na co peníze šly</h3>
+        <p>Jedenáct srozumitelných oblastí – doprava, školy, kultura, odpady, hasiči… v korunách na obyvatele.</p>
       </li>
       <li class="card">
+        <span class="step-ico"><Icon name="saldo" size={22} /></span>
         <h3>Jak si stojí proti ostatním</h3>
-        <p>Srovnání s mediánem obcí stejné velikosti ve stejném kraji. Žádné hodnocení, jen kontext.</p>
+        <p>Srovnání s obcemi stejné velikosti ve stejném kraji. Bez hodnocení – jen kontext, ať víte, co je běžné.</p>
       </li>
     </ol>
   </section>
 
-  <section class="small muted">
-    <p>
-      Data pokrývají obce s {num(totalPop)} obyvateli. Vycházejí z otevřených dat Ministerstva financí
-      (Monitor státní pokladny, výkaz FIN 2-12 M) a Českého statistického úřadu a jsou upravená: sečtená
-      do kategorií a přepočtená na obyvatele. <a href={`${base}o-projektu/`}>Jak přesně čísla počítáme.</a>
+  <section id="kraje" aria-labelledby="h-kraje">
+    <div class="section-head">
+      <h2 id="h-kraje">Procházet podle kraje</h2>
+      <p>Tabulka všech obcí kraje, kterou můžete řadit a filtrovat.</p>
+    </div>
+    <ul class="kraje">
+      {kraje.map((k) => (
+        <li>
+          <a href={`${base}kraj/${k.code.toLowerCase()}/`}>
+            <span class="k-name">{k.name}</span>
+            <span class="k-n">{num(k.n)} {plural(k.n, 'obec', 'obce', 'obcí')}</span>
+            <Icon name="arrow" size={18} class="k-arrow" />
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section aria-labelledby="h-mesta">
+    <div class="section-head">
+      <h2 id="h-mesta">Největší města</h2>
+    </div>
+    <ul class="cities">
+      {biggest.map((r) => (
+        <li><a href={`${base}obec/${r[0]}/`}>{r[1]}</a> <span class="muted small">{num(r[4])}</span></li>
+      ))}
+    </ul>
+  </section>
+
+  <section aria-labelledby="h-pozor" class="card caveats">
+    <h2 id="h-pozor">Než začnete srovnávat</h2>
+    <ul>
+      <li><strong>Vyšší výdaje nejsou automaticky špatně.</strong> Obec, která letos stavěla školu nebo kanalizaci, bude mít výdaje vysoko – a za pár let zase nízko.</li>
+      <li><strong>Malé obce hodně kolísají.</strong> U vesnice se stovkou obyvatel stačí jedna oprava silnice a výdaje na obyvatele se znásobí.</li>
+      <li><strong>Jde o skutečnost, ne o plán.</strong> Čísla ukazují, co obec opravdu vybrala a utratila do 31. prosince.</li>
+      <li><strong>Částky nejsou očištěné o inflaci.</strong> Při srovnání let to mějte na paměti.</li>
+    </ul>
+    <p class="small">
+      Data pokrývají obce s {num(totalPop)} obyvateli. Pocházejí z otevřených dat Ministerstva financí (Monitor
+      státní pokladny) a Českého statistického úřadu a jsou upravená: sečtená do oblastí a přepočtená na obyvatele.
+      <a href={`${base}o-projektu/`}>Jak přesně čísla počítáme.</a>
     </p>
   </section>
 </Base>
 
 <style>
-  .hero { padding: 1.5rem 0 1rem; }
-  .lead { font-size: 1.2rem; max-width: 40rem; color: var(--muted); margin-bottom: 1.5rem; }
-  .examples { margin-top: .9rem; color: var(--muted); }
+  .hero { background: var(--hero); color: var(--hero-ink); padding: 3rem 0 2.75rem; }
+  .hero h1 { color: var(--hero-ink); font-size: clamp(2.2rem, 7vw, 3.4rem); max-width: 18ch; }
+  .lead { font-size: 1.2rem; max-width: 40rem; color: var(--hero-muted); margin: .75rem 0 1.75rem; }
+  .search-box { max-width: 600px; }
+  .hero .search-box :global(label) { color: var(--hero-ink); }
+  .examples { margin: 1rem 0 0; color: var(--hero-muted); display: flex; flex-wrap: wrap; gap: .35rem .9rem; align-items: center; font-size: .95rem; }
+  .examples a { color: var(--hero-ink); }
+
   .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
   @media (min-width: 720px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+  .step-ico { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-ink); margin-bottom: .7rem; }
   .steps p { margin: 0; color: var(--muted); font-size: .98rem; }
+
+  .kraje { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .kraje a { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 .5rem; padding: .8rem 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--ink); box-shadow: var(--shadow); }
+  .kraje a:hover { border-color: var(--accent); }
+  .k-name { font-weight: 700; }
+  .k-n { grid-row: 2; color: var(--muted); font-size: .88rem; }
+  .kraje :global(.k-arrow) { grid-row: 1 / 3; grid-column: 2; color: var(--accent-ink); }
+
+  .cities { list-style: none; padding: 0; margin: 0; display: grid; gap: .45rem 1.5rem; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .cities a { font-weight: 600; }
+
+  .caveats ul { padding-left: 1.2rem; display: grid; gap: .5rem; margin: 0 0 1rem; }
+  .caveats li::marker { color: var(--accent); }
 </style>

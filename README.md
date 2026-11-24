@@ -16,6 +16,8 @@
   („o 47 % víc než podobné obce“).
 - **Odkud peníze přicházejí:** daně, dotace, nedaňové příjmy, prodej majetku.
 - **Vývoj v čase** za 5 let a **plán vs. skutečnost** (schválený rozpočet, rozpočet po změnách, skutečnost).
+- **Shrnutí „Ve zkratce“** běžnou češtinou, **vysvětlivky „Co to znamená?“** u každé sekce a **slovníček pojmů**.
+- **Přehled po krajích:** tabulka všech obcí kraje s filtrem a řazením.
 - **Obrázek ke sdílení** pro každou obec, s jedním zajímavým číslem:
 
   <img src="docs/og-kutna-hora.png" width="480" alt="Obrázek ke sdílení: Kutná Hora dává na kulturu o 47 % víc než podobné obce">
