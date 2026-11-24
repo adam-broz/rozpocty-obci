@@ -1,0 +1,21 @@
+{
+  "name": "rozpocty-obci-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "og": "node scripts/og.mjs",
+    "dev": "astro dev",
+    "build": "node scripts/og.mjs && astro build",
+    "build:pages": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "5.18.2"
+  },
+  "devDependencies": {
+    "@fontsource/source-sans-3": "5.3.1",
+    "@resvg/resvg-js": "2.6.2",
+    "satori": "0.63.2",
+    "sharp": "^0.34.4"
+  }
+}

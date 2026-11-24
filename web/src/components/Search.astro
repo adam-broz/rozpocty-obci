@@ -1,0 +1,148 @@
+---
+// Vyhledávání obce s našeptávačem (ARIA combobox). Index obcí se stáhne
+// až při prvním zaměření pole, aby nebrzdil načtení stránky.
+interface Props { large?: boolean; id?: string }
+const { large = false, id = 'hledat' } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+---
+
+<div class:list={['search', { large }]} data-base={base}>
+  <label for={id} class:list={[{ 'visually-hidden': !large }]}>Najděte svou obec</label>
+  <div class="field">
+    <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" /><path d="m20 20-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+    <input
+      id={id}
+      type="search"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-expanded="false"
+      aria-controls={`${id}-list`}
+      autocomplete="off"
+      spellcheck="false"
+      placeholder="Název obce, např. Kutná Hora"
+    />
+  </div>
+  <ul id={`${id}-list`} role="listbox" aria-label="Nalezené obce" hidden></ul>
+  <p class="status visually-hidden" role="status" aria-live="polite"></p>
+</div>
+
+<script>
+  import { fold } from '../lib/format';
+
+  type Row = [string, string, string, string, number];
+  const nf = new Intl.NumberFormat('cs-CZ');
+
+  for (const root of document.querySelectorAll<HTMLElement>('.search')) {
+    const base = root.dataset.base!;
+    const input = root.querySelector('input')!;
+    const list = root.querySelector('ul')!;
+    const status = root.querySelector('.status')!;
+    let rows: (Row & { f?: string })[] | null = null;
+    let loading: Promise<void> | null = null;
+    let results: Row[] = [];
+    let active = -1;
+
+    const load = () =>
+      (loading ??= fetch(`${base}data/index.json`)
+        .then((r) => r.json())
+        .then((data: Row[]) => {
+          rows = data.map((r) => Object.assign(r, { f: fold(r[1]) }));
+        }));
+
+    function search(q: string): Row[] {
+      if (!rows) return [];
+      const fq = fold(q.trim());
+      if (fq.length < 2) return [];
+      const starts: Row[] = [];
+      const words: Row[] = [];
+      const inside: Row[] = [];
+      for (const r of rows) {
+        const f = r.f!;
+        if (f.startsWith(fq)) starts.push(r);
+        else if (f.includes(' ' + fq) || f.includes('-' + fq)) words.push(r);
+        else if (f.includes(fq)) inside.push(r);
+        if (starts.length >= 8) break;
+      }
+      // index je seřazený podle počtu obyvatel → větší obce první
+      return [...starts, ...words, ...inside].slice(0, 8);
+    }
+
+    function render() {
+      list.innerHTML = '';
+      results.forEach((r, i) => {
+        const li = document.createElement('li');
+        li.id = `${list.id}-${i}`;
+        li.setAttribute('role', 'option');
+        li.setAttribute('aria-selected', String(i === active));
+        const a = document.createElement('a');
+        a.href = `${base}obec/${r[0]}/`;
+        a.tabIndex = -1;
+        const name = document.createElement('span');
+        name.className = 'n';
+        name.textContent = r[1];
+        const info = document.createElement('span');
+        info.className = 'i';
+        info.textContent = `${r[2] ? 'okres ' + r[2] + ' · ' : ''}${nf.format(r[4])} obyv.`;
+        a.append(name, info);
+        li.append(a);
+        li.addEventListener('mousedown', (e) => e.preventDefault());
+        list.append(li);
+      });
+      const open = results.length > 0;
+      list.hidden = !open;
+      input.setAttribute('aria-expanded', String(open));
+      if (active >= 0) input.setAttribute('aria-activedescendant', `${list.id}-${active}`);
+      else input.removeAttribute('aria-activedescendant');
+    }
+
+    async function update() {
+      await load();
+      results = search(input.value);
+      active = -1;
+      render();
+      const q = input.value.trim();
+      status.textContent = q.length < 2 ? '' : results.length ? `${results.length} výsledků, vyberte šipkami` : 'Žádná obec nenalezena';
+    }
+
+    input.addEventListener('focus', () => load());
+    input.addEventListener('input', update);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' && results.length) {
+        active = (active + 1) % results.length; render(); e.preventDefault();
+      } else if (e.key === 'ArrowUp' && results.length) {
+        active = (active - 1 + results.length) % results.length; render(); e.preventDefault();
+      } else if (e.key === 'Enter') {
+        const r = results[active >= 0 ? active : 0];
+        if (r) { e.preventDefault(); location.href = `${base}obec/${r[0]}/`; }
+      } else if (e.key === 'Escape') {
+        results = []; active = -1; render();
+      }
+    });
+    input.addEventListener('blur', () => setTimeout(() => { results = []; render(); }, 150));
+  }
+</script>
+
+<style>
+  .search { position: relative; max-width: 560px; }
+  label { display: block; font-weight: 600; margin-bottom: .4rem; }
+  .field { position: relative; }
+  .field svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  input {
+    width: 100%; font: inherit; color: var(--ink); background: var(--surface);
+    border: 1.5px solid var(--line); border-radius: var(--radius);
+    padding: .6rem .8rem .6rem 2.5rem; min-height: 44px;
+  }
+  .large input { font-size: 1.2rem; padding: .85rem 1rem .85rem 2.75rem; border-color: var(--muted); }
+  input:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; border-color: var(--accent); }
+  ul {
+    position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px);
+    margin: 0; padding: 4px; list-style: none; background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgb(0 0 0 / .12);
+  }
+  /* položky vznikají v JS, proto :global */
+  ul :global(li a) { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem .7rem; border-radius: 6px; color: var(--ink); text-decoration: none; }
+  ul :global(li[aria-selected='true'] a), ul :global(li a:hover) { background: var(--accent-soft); }
+  ul :global(.n) { font-weight: 600; }
+  ul :global(.i) { color: var(--muted); font-size: .9rem; white-space: nowrap; }
+</style>

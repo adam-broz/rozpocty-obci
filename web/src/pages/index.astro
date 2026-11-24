@@ -1,0 +1,73 @@
+---
+import Base from '../layouts/Base.astro';
+import Search from '../components/Search.astro';
+import { getIndex, getMeta } from '../lib/data';
+import { num } from '../lib/format';
+
+const meta = getMeta();
+const index = getIndex();
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const examples = ['554782', '582786', '533955', '549002', '561771']
+  .map((id) => index.find((r) => r[0] === id))
+  .filter((r): r is NonNullable<typeof r> => !!r);
+const totalPop = index.reduce((s, r) => s + r[4], 0);
+---
+
+<Base
+  title="Rozpočty obcí – kam jdou peníze vaší obce"
+  description={`Hospodaření všech ${num(index.length)} obcí v Česku srozumitelně: kolik vybraly, za co utratily a jak si stojí proti podobným obcím. Z otevřených dat MF ČR a ČSÚ.`}
+  ogImage="og/index.png"
+  canonicalPath=""
+>
+  <section class="hero">
+    <h1>Kam jdou peníze vaší obce?</h1>
+    <p class="lead">
+      Příjmy a výdaje všech {num(index.length)} obcí v Česku za roky {meta.years[0]}–{meta.latestYear}.
+      Přepočtené na obyvatele a porovnané s podobně velkými obcemi ve stejném kraji.
+    </p>
+    <Search large />
+    <p class="examples small">
+      Například:
+      {examples.map((r, i) => (
+        <>
+          <a href={`${base}obec/${r[0]}/`}>{r[1]}</a>{i < examples.length - 1 ? ', ' : ''}
+        </>
+      ))}
+    </p>
+  </section>
+
+  <section class="how" aria-labelledby="h-jak">
+    <h2 id="h-jak">Co tu najdete</h2>
+    <ol class="steps">
+      <li class="card">
+        <h3>Kolik obec má a utrácí</h3>
+        <p>Příjmy a výdaje za celý rok podle skutečnosti, ne podle plánu. Bez převodů mezi vlastními účty, aby se nic nepočítalo dvakrát.</p>
+      </li>
+      <li class="card">
+        <h3>Na co peníze jdou</h3>
+        <p>Jedenáct srozumitelných oblastí – od dopravy a škol po odpady a hasiče – v korunách na jednoho obyvatele.</p>
+      </li>
+      <li class="card">
+        <h3>Jak si stojí proti ostatním</h3>
+        <p>Srovnání s mediánem obcí stejné velikosti ve stejném kraji. Žádné hodnocení, jen kontext.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="small muted">
+    <p>
+      Data pokrývají obce s {num(totalPop)} obyvateli. Vycházejí z otevřených dat Ministerstva financí
+      (Monitor státní pokladny, výkaz FIN 2-12 M) a Českého statistického úřadu a jsou upravená: sečtená
+      do kategorií a přepočtená na obyvatele. <a href={`${base}o-projektu/`}>Jak přesně čísla počítáme.</a>
+    </p>
+  </section>
+</Base>
+
+<style>
+  .hero { padding: 1.5rem 0 1rem; }
+  .lead { font-size: 1.2rem; max-width: 40rem; color: var(--muted); margin-bottom: 1.5rem; }
+  .examples { margin-top: .9rem; color: var(--muted); }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+  @media (min-width: 720px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+  .steps p { margin: 0; color: var(--muted); font-size: .98rem; }
+</style>

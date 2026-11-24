@@ -1,0 +1,155 @@
+---
+// Jen latinka + rozšířená latinka (čeština), ne cyrilice/řečtina.
+import '@fontsource/source-sans-3/latin-400.css';
+import '@fontsource/source-sans-3/latin-ext-400.css';
+import '@fontsource/source-sans-3/latin-600.css';
+import '@fontsource/source-sans-3/latin-ext-600.css';
+import '@fontsource/source-sans-3/latin-700.css';
+import '@fontsource/source-sans-3/latin-ext-700.css';
+import { getMeta } from '../lib/data';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string; // cesta relativní k base, např. "og/533955.png"
+  canonicalPath?: string;
+}
+const { title, description, ogImage, canonicalPath } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const site = (Astro.site?.toString() ?? '').replace(/\/$/, '');
+const abs = (p: string) => `${site}${base}${p}`;
+const meta = getMeta();
+---
+
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    {canonicalPath !== undefined && <link rel="canonical" href={abs(canonicalPath)} />}
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="cs_CZ" />
+    <meta property="og:site_name" content="Rozpočty obcí" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {ogImage && <meta property="og:image" content={abs(ogImage)} />}
+    {ogImage && <meta property="og:image:width" content="1200" />}
+    {ogImage && <meta property="og:image:height" content="630" />}
+    <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+  </head>
+  <body>
+    <a class="skip" href="#obsah">Přeskočit na obsah</a>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href={base}>
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="9" rx="1" /><rect x="10" y="7" width="4" height="14" rx="1" /><rect x="17" y="3" width="4" height="18" rx="1" /></svg>
+          Rozpočty obcí
+        </a>
+        <nav aria-label="Hlavní">
+          <a href={`${base}o-projektu/`}>Jak to počítáme</a>
+        </nav>
+      </div>
+    </header>
+    <main id="obsah" class="wrap">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="wrap">
+        <p>
+          <strong>Zdroj dat: Ministerstvo financí ČR, Monitor státní pokladny; Český statistický úřad.</strong>
+          Data jsou upravená: agregovaná do kategorií a přepočtená na obyvatele. Nezávislý
+          open-source projekt, nijak nesouvisí s uvedenými úřady.
+          <a href={meta.sources.monitorLicense}>Podmínky užití dat Monitoru</a> ·
+          <a href={`${base}o-projektu/`}>Metodika a licence</a>
+        </p>
+        <p class="muted">Data aktualizována {new Date(meta.generated).toLocaleDateString('cs-CZ')} · roky {meta.years[0]}–{meta.latestYear}</p>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --ink: #1c1d1f;
+    --muted: #5a5f66;
+    --line: #dcdad3;
+    --accent: #0f5c8c;
+    --accent-soft: #d6e6f1;
+    --accent-ink: #0b4a72;
+    --median: #1c1d1f;
+    --pos: #8a4b00;
+    --neg: #2f6b2f;
+    --income: #0f5c8c;
+    --expense: #d9895f;
+    --capital: #8f3a12;
+    --focus: #e0a100;
+    --radius: 10px;
+    --font: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141517;
+      --surface: #1d1f22;
+      --ink: #ecebe7;
+      --muted: #a8adb4;
+      --line: #34373c;
+      --accent: #6fb3e0;
+      --accent-soft: #23384a;
+      --accent-ink: #9fd0f2;
+      --median: #ecebe7;
+      --pos: #f0b46b;
+      --neg: #8fcf8f;
+      --income: #6fb3e0;
+      --expense: #9a5a3c;
+      --capital: #f2b38f;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 1.0625rem/1.55 var(--font);
+    font-variant-numeric: tabular-nums;
+  }
+  a { color: var(--accent-ink); text-underline-offset: 2px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  h1, h2, h3 { line-height: 1.2; text-wrap: balance; }
+  h1 { font-size: clamp(1.9rem, 5vw, 2.6rem); font-weight: 700; margin: 0 0 .25rem; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; font-weight: 700; margin: 0 0 .75rem; }
+  h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 .5rem; }
+  p { margin: 0 0 1rem; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+  .muted { color: var(--muted); }
+  .small { font-size: .9rem; }
+  .skip { position: absolute; left: -999px; top: 0; background: var(--surface); padding: .5rem 1rem; z-index: 10; }
+  .skip:focus { left: 8px; top: 8px; }
+  .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .site-header { border-bottom: 1px solid var(--line); background: var(--surface); }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 56px; }
+  .brand { display: inline-flex; gap: .5rem; align-items: center; font-weight: 700; color: var(--ink); text-decoration: none; font-size: 1.1rem; }
+  .brand svg { fill: var(--accent); }
+  .site-header nav a { color: var(--muted); font-size: .95rem; }
+  main { padding-top: 1.75rem; padding-bottom: 3rem; }
+  .site-footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2.5rem; font-size: .9rem; color: var(--muted); }
+  .site-footer strong { color: var(--ink); font-weight: 600; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem; }
+  section { margin: 0 0 2.25rem; }
+  .table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  .table th, .table td { text-align: right; padding: .45rem .5rem; border-bottom: 1px solid var(--line); }
+  .table th:first-child, .table td:first-child { text-align: left; padding-left: 0; }
+  .table thead th { font-weight: 600; color: var(--muted); font-size: .85rem; }
+  .table-scroll { overflow-x: auto; }
+  details > summary { cursor: pointer; color: var(--accent-ink); }
+  details[open] > summary { margin-bottom: .5rem; }
+</style>

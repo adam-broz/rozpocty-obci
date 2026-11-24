@@ -1,0 +1,54 @@
+---
+// Vodorovné pruhy „kam jdou peníze“ v Kč na obyvatele, se značkou mediánu
+// podobných obcí. Čistě HTML/CSS – čitelné i bez JavaScriptu a pro čtečky.
+import { kc, diffShort } from '../lib/format';
+
+interface Row { id: string; name: string; description: string; value: number; median: number | null }
+interface Props { rows: Row[]; showMedian: boolean }
+const { rows, showMedian } = Astro.props;
+const max = Math.max(1, ...rows.map((r) => Math.max(r.value, showMedian ? r.median ?? 0 : 0)));
+const w = (x: number) => `${Math.max(0, (x / max) * 100).toFixed(2)}%`;
+---
+
+<ul class="bars">
+  {rows.map((r) => {
+    const diff = showMedian && r.median ? r.value / r.median - 1 : null;
+    return (
+      <li>
+        <div class="head">
+          <span class="name" title={r.description}>{r.name}</span>
+          <span class="val">
+            <strong>{kc(r.value)}</strong>
+            {showMedian && r.median != null && (
+              <span class="muted cmp"> · podobné obce {kc(r.median)}{diff != null && r.median > 0 && <> ({diffShort(diff)})</>}</span>
+            )}
+          </span>
+        </div>
+        <div class="track" aria-hidden="true">
+          <div class="bar" style={`width:${w(r.value)}`}></div>
+          {showMedian && r.median != null && <div class="med" style={`left:${w(r.median)}`}></div>}
+        </div>
+      </li>
+    );
+  })}
+</ul>
+{showMedian && (
+  <p class="legend muted small" aria-hidden="true">
+    <span class="key bar-key"></span> tato obec <span class="key med-key"></span> medián podobných obcí
+  </p>
+)}
+
+<style>
+  .bars { list-style: none; margin: 0; padding: 0; display: grid; gap: .85rem; }
+  .head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .1rem 1rem; align-items: baseline; margin-bottom: .3rem; }
+  .name { font-weight: 600; }
+  .val { font-size: .95rem; }
+  .cmp { font-size: .9rem; }
+  .track { position: relative; height: 12px; background: color-mix(in srgb, var(--line) 55%, transparent); border-radius: 6px; }
+  .bar { height: 100%; background: var(--accent); border-radius: 6px; min-width: 2px; }
+  .med { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; background: var(--median); border-radius: 2px; }
+  .legend { margin-top: .9rem; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+  .key { display: inline-block; vertical-align: middle; }
+  .bar-key { width: 18px; height: 10px; background: var(--accent); border-radius: 3px; }
+  .med-key { width: 3px; height: 16px; background: var(--median); margin-left: .75rem; }
+</style>

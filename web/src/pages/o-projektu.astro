@@ -1,0 +1,109 @@
+---
+import Base from '../layouts/Base.astro';
+import { getMeta } from '../lib/data';
+import { BAND_PHRASE } from '../lib/format';
+
+const meta = getMeta();
+const repo = import.meta.env.PUBLIC_REPO_URL as string | undefined;
+---
+
+<Base title="Jak to počítáme | Rozpočty obcí" description="Metodika, zdroje dat a licence projektu Rozpočty obcí." canonicalPath="o-projektu/">
+  <article class="prose">
+    <h1>Jak to počítáme</h1>
+    <p class="lead muted">
+      Rozpočty obcí je nezávislý open-source projekt. Bere oficiální otevřená data a převádí je do
+      podoby, které rozumí každý. Nijak nesouvisí s Ministerstvem financí ani s Českým statistickým úřadem.
+    </p>
+
+    <h2>Zdroje dat</h2>
+    <ul>
+      <li>
+        <strong>Ministerstvo financí ČR, Monitor státní pokladny</strong> – výkaz FIN 2-12 M (plnění rozpočtu
+        územních samosprávných celků) za prosinec každého roku a číselníky účetních jednotek, paragrafů a položek.
+        <a href={meta.sources.monitor}>monitor.statnipokladna.gov.cz</a>,
+        <a href={meta.sources.monitorLicense}>podmínky užití</a>.
+      </li>
+      <li>
+        <strong>Český statistický úřad</strong> – počet obyvatel obcí k 1. 1. (datová sada OBY02A).
+        <a href={meta.sources.csu}>data.csu.gov.cz</a>.
+      </li>
+    </ul>
+    <p>
+      Data jsou <strong>upravená</strong>: sečtená do kategorií, očištěná o převody mezi vlastními účty obce
+      a přepočtená na obyvatele. Původní čísla najdete na portálu Monitor – na stránce každé obce je odkaz.
+      Aktualizace: {new Date(meta.generated).toLocaleDateString('cs-CZ')}, roky {meta.years.join(', ')}.
+    </p>
+
+    <h2>Co přesně zobrazujeme</h2>
+    <ul>
+      <li><strong>Skutečnost za uzavřené roky.</strong> Ne schválený rozpočet, ale co obec opravdu vybrala a utratila do 31. 12.</li>
+      <li>
+        <strong>Bez převodů mezi vlastními účty</strong> (tzv. konsolidace). Když obec převede peníze z jednoho svého
+        účtu na druhý, objeví se ve výkazu jako výdaj i příjem. Takové položky (např. 4134/5345) vynecháváme
+        podle příznaku v číselníku položek. Čísla pak odpovídají „konsolidovaným“ příjmům a výdajům na Monitoru.
+      </li>
+      <li><strong>Bez financování</strong> – přijaté úvěry a splátky jistin nejsou příjem ani výdaj.</li>
+      <li>
+        <strong>Příjmy</strong> dělíme na daňové, nedaňové (nájmy, poplatky), kapitálové (prodej majetku)
+        a dotace a transfery. <strong>Výdaje</strong> na běžné (provoz) a kapitálové (investice).
+      </li>
+      <li><strong>Na obyvatele</strong> = částka / počet obyvatel k 1. 1. daného roku podle ČSÚ.</li>
+    </ul>
+
+    <h2>Srovnání s podobnými obcemi</h2>
+    <p>
+      Každou obec porovnáváme s obcemi stejné velikosti ve stejném kraji. Používáme <strong>medián</strong>, ne průměr –
+      jedna obec s obří investicí tak srovnání nezkreslí. Velikostní skupiny:
+    </p>
+    <ul class="cols">{BAND_PHRASE.map((b) => <li>{b}</li>)}</ul>
+    <p>
+      Když je ve skupině v kraji méně než {meta.minGroupSize} obcí (hlavně velká města), srovnáváme se stejně
+      velkými obcemi v celé ČR. Praha je zároveň krajem, proto ji nesrovnáváme.
+    </p>
+    <p>
+      Rozdíl neznamená, že je něco dobře nebo špatně. Obec s vlastní školou nebo velkou investicí v daném roce
+      bude mít výdaje vyšší – to je v pořádku. Srovnání je kontext, ne hodnocení.
+    </p>
+
+    <h2>Kategorie výdajů</h2>
+    <p>
+      Výdaje třídíme podle tzv. paragrafů rozpočtové skladby (odvětvové třídění) do jedenácti oblastí. Přesné
+      přiřazení je v souboru {repo ? <a href={`${repo}/blob/main/pipeline/categories.yaml`}>categories.yaml</a> : <code>pipeline/categories.yaml</code>}
+      s komentáři – pokud něco nesedí, budeme rádi za opravu.
+    </p>
+    <dl class="cats">
+      {meta.categories.map((c) => (
+        <>
+          <dt>{c.name}</dt>
+          <dd>{c.description}</dd>
+        </>
+      ))}
+    </dl>
+
+    <h2>Známá omezení</h2>
+    <ul>
+      <li>Městské části Prahy a obvody statutárních měst zatím nezobrazujeme. Peníze, které jim město posílá, proto u města uvádíme zvlášť.</li>
+      <li>Hospodaření příspěvkových organizací (školy, technické služby) a obecních firem je vidět jen přes příspěvky, které jim obec posílá.</li>
+      <li>Jednorázové velké investice nebo dotace mohou čísla za jeden rok výrazně zvednout – podívejte se na vývoj v čase.</li>
+      <li>Obce, které v některém roce nevykázaly data, v tom roce chybějí.</li>
+    </ul>
+
+    <h2>Licence</h2>
+    <p>
+      Kód je pod licencí MIT{repo && <> a je <a href={repo}>na GitHubu</a></>}. Pro data platí podmínky jejich
+      poskytovatelů: MF ČR vyžaduje uvést zdroj, odkázat na <a href={meta.sources.monitorLicense}>podmínky užití</a>
+      a nevzbuzovat dojem, že projekt podporuje; data ČSÚ jsou otevřená bez omezení.
+    </p>
+  </article>
+</Base>
+
+<style>
+  .prose { max-width: 42rem; }
+  .prose h2 { margin-top: 2rem; }
+  .prose li { margin-bottom: .4rem; }
+  .lead { font-size: 1.15rem; }
+  .cols { columns: 2; column-gap: 2rem; }
+  @media (max-width: 560px) { .cols { columns: 1; } }
+  .cats dt { font-weight: 600; margin-top: .6rem; }
+  .cats dd { margin: 0; color: var(--muted); }
+</style>
