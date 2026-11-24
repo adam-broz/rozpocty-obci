@@ -2,7 +2,7 @@
 
 **Kolik vybrala a za co utratila každá z 6 254 obcí v Česku: přepočteno na obyvatele a porovnáno s podobně velkými obcemi.**
 
-🌐 **Web:** https://UZIVATEL.github.io/rozpocty-obci/ *(doplní se po zveřejnění)*
+🌐 **Web:** https://adam-broz.github.io/rozpocty-obci/
 
 ![Stránka Kutné Hory: hlavní čísla a zvýrazněné srovnání s podobnými městy](docs/screenshot.jpg)
 

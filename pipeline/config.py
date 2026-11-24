@@ -37,7 +37,7 @@ REQUEST_PAUSE_S = 2.0
 # Minimální velikost srovnávací skupiny v kraji; jinak se srovnává celostátně.
 MIN_GROUP_SIZE = 5
 
-USER_AGENT = "rozpocty-obci (open-source; https://github.com/) python-urllib"
+USER_AGENT = "rozpocty-obci (open-source; https://github.com/adam-broz/rozpocty-obci) python-urllib"
 
 KRAJE = {
     "CZ010": "Hlavní město Praha",
