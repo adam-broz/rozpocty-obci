@@ -1,0 +1,102 @@
+# Mapování paragrafů rozpočtové skladby (odvětvové třídění) na kategorie
+# srozumitelné pro běžné lidi.
+#
+# Jak to funguje
+# --------------
+# Paragraf je čtyřmístný kód (např. 3113 = Základní školy). Jeho první číslice
+# je skupina, první dvě oddíl, první tři pododdíl. Každá kategorie má seznam
+# prefixů; paragraf patří do kategorie, jejíž prefix je NEJDELŠÍ shodný.
+# Paragraf, který nemá žádný shodný prefix, spadne do kategorie „ostatni“.
+#
+# Kategorie se týkají jen VÝDAJŮ. Příjmy se třídí podle druhu (položky):
+# daňové / nedaňové / kapitálové / dotace (viz pipeline/aggregate.py).
+#
+# Úpravy vítány! Pokud si myslíte, že nějaký paragraf patří jinam, pošlete
+# pull request se změnou tohoto souboru a krátkým zdůvodněním. Testy
+# (tests/test_categories.py) ověří, že každý platný paragraf má kategorii.
+#
+# Číselník paragrafů: https://monitor.statnipokladna.gov.cz/datovy-katalog/ciselniky/prohlizec/paragraf
+
+categories:
+  - id: doprava
+    name: Doprava
+    description: Silnice a chodníky, parkoviště, veřejná doprava a dopravní obslužnost.
+    prefixes:
+      - "22"    # oddíl 22 Doprava (2212 Silnice, 2219 Ostatní záležitosti pozemních komunikací – chodníky, 2221 Provoz veřejné silniční dopravy, 2292 Dopravní obslužnost…)
+
+  - id: skolstvi
+    name: Školství
+    description: Mateřské a základní školy, školní jídelny, zájmové vzdělávání.
+    prefixes:
+      - "31"    # oddíl 31 Vzdělávání a školské služby (3111 MŠ, 3113 ZŠ, 3141 Školní stravování…)
+      - "32"    # oddíl 32 Vzdělávání a školské služby (vyšší stupně, pokud je obec financuje)
+
+  - id: kultura
+    name: Kultura
+    description: Knihovny, muzea, kulturní domy, památky, slavnosti, místní zpravodaj.
+    prefixes:
+      - "33"    # oddíl 33 Kultura, církve a sdělovací prostředky (3314 Knihovny, 3319 Ostatní záležitosti kultury, 3322 Památky, 3349 Zpravodaj, 3399 SPOZ…)
+
+  - id: sport
+    name: Sport a volný čas
+    description: Sportoviště, dětská hřiště, příspěvky sportovním klubům a zájmové činnosti.
+    prefixes:
+      - "34"    # oddíl 34 Sport a zájmová činnost (3412 Sportovní zařízení, 3419 Ostatní sportovní činnost, 3421 Využití volného času dětí a mládeže…)
+
+  - id: bydleni
+    name: Bydlení a komunální služby
+    description: Obecní byty, veřejné osvětlení, hřbitovy, pitná voda, územní plánování, technické služby.
+    prefixes:
+      - "36"    # oddíl 36 Bydlení, komunální služby a územní rozvoj (3612 Bytové hospodářství, 3631 Veřejné osvětlení, 3632 Pohřebnictví, 3639 Komunální služby…)
+      - "231"   # pododdíl 231 Pitná voda – zásobování vodou je komunální služba (COFOG 06.3)
+
+  - id: zivotni_prostredi
+    name: Životní prostředí
+    description: Odpady, veřejná zeleň, čistota obce, kanalizace a čistírny, vodní toky, lesy.
+    prefixes:
+      - "37"    # oddíl 37 Ochrana životního prostředí (3722 Sběr a svoz komunálních odpadů, 3745 Péče o vzhled obcí a veřejnou zeleň…)
+      - "232"   # pododdíl 232 Odvádění a čištění odpadních vod – kanalizace a ČOV (COFOG 05.2)
+      - "233"   # pododdíl 233 Vodní toky
+      - "234"   # pododdíl 234 Vodní díla v zemědělské krajině (rybníky, nádrže)
+      - "236"   # pododdíl 236 Vodní hospodářství – ostatní
+      - "238"   # pododdíl 238 Vodohospodářský výzkum a vývoj
+      - "239"   # pododdíl 239 Ostatní záležitosti vodního hospodářství (2399 – např. protipovodňová opatření)
+      - "103"   # pododdíl 103 Lesní hospodářství (obecní lesy)
+
+  - id: socialni
+    name: Sociální služby
+    description: Pečovatelská služba, domovy pro seniory, sociální poradenství, podpora zaměstnanosti.
+    prefixes:
+      - "4"     # skupina 4 Sociální věci a politika zaměstnanosti
+
+  - id: zdravotnictvi
+    name: Zdravotnictví
+    description: Nemocnice a ambulance zřizované obcí, záchranná služba, protidrogová prevence.
+    prefixes:
+      - "35"    # oddíl 35 Zdravotnictví
+
+  - id: bezpecnost
+    name: Bezpečnost
+    description: Hasiči (SDH), obecní a městská policie, krizové řízení.
+    prefixes:
+      - "5"     # skupina 5 Bezpečnost státu a právní ochrana (5311 Bezpečnost a veřejný pořádek – obecní policie, 5512 Požární ochrana – dobrovolná část, 52xx Civilní připravenost…)
+
+  - id: sprava
+    name: Správa obce
+    description: Obecní úřad, zastupitelstvo, volby.
+    prefixes:
+      - "61"    # oddíl 61 Státní moc, státní správa, územní samospráva a politické strany (6112 Zastupitelstva obcí, 6171 Činnost místní správy, 611x Volby)
+
+  - id: ostatni
+    name: Ostatní
+    description: Finanční operace (bankovní poplatky, pojištění, daně placené obcí), zemědělství, cestovní ruch, podpora podnikání a další.
+    prefixes:
+      - "1"     # skupina 1 Zemědělství, lesní hospodářství a rybářství (kromě lesů, viz výše)
+      - "21"    # oddíl 21 Průmysl, stavebnictví, obchod a služby (2141 Vnitřní obchod, 2143 Cestovní ruch…)
+      - "24"    # oddíl 24 Spoje
+      - "25"    # oddíl 25 Všeobecné hospodářské záležitosti
+      - "38"    # oddíl 38 Ostatní výzkum a vývoj
+      - "39"    # oddíl 39 Ostatní činnosti související se službami pro obyvatelstvo
+      - "62"    # oddíl 62 Jiné veřejné služby a činnosti
+      - "63"    # oddíl 63 Finanční operace (6310 Bankovní poplatky a úroky, 6320 Pojištění, 6399 Ostatní finanční operace – mj. daň z příjmů placená obcí „sama sobě“)
+      - "64"    # oddíl 64 Ostatní činnosti (6402 Finanční vypořádání minulých let, 6409 Ostatní činnosti jinde nezařazené)
