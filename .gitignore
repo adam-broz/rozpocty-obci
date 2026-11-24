@@ -1,0 +1,19 @@
+# Data (stahují se a generují pipeline)
+data/raw/
+data/interim/
+web/public/data/
+web/public/og/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / Astro
+node_modules/
+web/dist/
+web/.astro/
+
+# OS
+.DS_Store
